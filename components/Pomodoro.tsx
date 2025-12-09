@@ -1,0 +1,167 @@
+import React, { useState, useEffect, useRef } from 'react';
+import { Play, Pause, RotateCcw, Coffee, Brain, Battery, Settings, Save } from 'lucide-react';
+import { TimerSettings } from '../types';
+
+interface PomodoroProps {
+  initialSettings: TimerSettings;
+  onSaveSettings: (settings: TimerSettings) => void;
+}
+
+export const Pomodoro: React.FC<PomodoroProps> = ({ initialSettings, onSaveSettings }) => {
+  const [settings, setSettings] = useState<TimerSettings>(initialSettings);
+  const [mode, setMode] = useState<'focus' | 'short' | 'long'>('focus');
+  const [timeLeft, setTimeLeft] = useState(initialSettings.focus * 60);
+  const [isActive, setIsActive] = useState(false);
+  const [isEditing, setIsEditing] = useState(false); // Config mode
+  
+  // Temp state for editing
+  const [editValues, setEditValues] = useState<TimerSettings>(initialSettings);
+
+  const audioContextRef = useRef<AudioContext | null>(null);
+
+  // When props change (plan switched), update internal state
+  useEffect(() => {
+    setSettings(initialSettings);
+    setEditValues(initialSettings);
+    setIsActive(false);
+    // Reset time based on current mode
+    if (mode === 'focus') setTimeLeft(initialSettings.focus * 60);
+    if (mode === 'short') setTimeLeft(initialSettings.short * 60);
+    if (mode === 'long') setTimeLeft(initialSettings.long * 60);
+  }, [initialSettings]);
+
+  useEffect(() => {
+    let interval: ReturnType<typeof setInterval>;
+
+    if (isActive && timeLeft > 0) {
+      interval = setInterval(() => {
+        setTimeLeft((prev) => prev - 1);
+      }, 1000);
+    } else if (timeLeft === 0 && isActive) {
+      setIsActive(false);
+      playAlert();
+    }
+
+    return () => clearInterval(interval);
+  }, [isActive, timeLeft]);
+
+  const playAlert = () => {
+    if (!audioContextRef.current) {
+      audioContextRef.current = new (window.AudioContext || (window as any).webkitAudioContext)();
+    }
+    const ctx = audioContextRef.current;
+    if (ctx.state === 'suspended') ctx.resume();
+
+    const oscillator = ctx.createOscillator();
+    const gainNode = ctx.createGain();
+    oscillator.type = 'sine';
+    oscillator.frequency.setValueAtTime(880, ctx.currentTime);
+    oscillator.frequency.exponentialRampToValueAtTime(440, ctx.currentTime + 0.5);
+    gainNode.gain.setValueAtTime(0.1, ctx.currentTime);
+    gainNode.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.5);
+    oscillator.connect(gainNode);
+    gainNode.connect(ctx.destination);
+    oscillator.start();
+    oscillator.stop(ctx.currentTime + 0.5);
+  };
+
+  const toggleTimer = () => setIsActive(!isActive);
+  
+  const resetTimer = () => {
+    setIsActive(false);
+    setTimeLeft(settings[mode] * 60);
+  };
+
+  const setTimerMode = (newMode: 'focus' | 'short' | 'long') => {
+    setMode(newMode);
+    setIsActive(false);
+    setTimeLeft(settings[newMode] * 60);
+  };
+
+  const formatTime = (seconds: number) => {
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+  };
+
+  const saveConfig = () => {
+    onSaveSettings(editValues);
+    setSettings(editValues);
+    setIsEditing(false);
+    // Reset current timer to new setting
+    setIsActive(false);
+    setTimeLeft(editValues[mode] * 60);
+  };
+
+  if (isEditing) {
+    return (
+      <div className="fixed bottom-0 left-0 right-0 bg-[#181818] border-t border-gray-800 p-4 shadow-2xl z-50">
+        <div className="max-w-3xl mx-auto">
+          <div className="flex justify-between items-center mb-4">
+            <h3 className="text-white font-bold">Configurar Timer (minutos)</h3>
+            <button onClick={() => setIsEditing(false)} className="text-gray-500 hover:text-white">X</button>
+          </div>
+          <div className="grid grid-cols-3 gap-4 mb-4">
+            <div>
+              <label className="block text-xs text-gray-500 mb-1">Foco</label>
+              <input 
+                type="number" 
+                value={editValues.focus} 
+                onChange={e => setEditValues({...editValues, focus: parseInt(e.target.value) || 0})}
+                className="w-full bg-[#252525] text-white p-2 rounded border border-gray-700 text-center"
+              />
+            </div>
+            <div>
+              <label className="block text-xs text-gray-500 mb-1">Curto</label>
+              <input 
+                type="number" 
+                value={editValues.short} 
+                onChange={e => setEditValues({...editValues, short: parseInt(e.target.value) || 0})}
+                className="w-full bg-[#252525] text-white p-2 rounded border border-gray-700 text-center"
+              />
+            </div>
+            <div>
+              <label className="block text-xs text-gray-500 mb-1">Longo</label>
+              <input 
+                type="number" 
+                value={editValues.long} 
+                onChange={e => setEditValues({...editValues, long: parseInt(e.target.value) || 0})}
+                className="w-full bg-[#252525] text-white p-2 rounded border border-gray-700 text-center"
+              />
+            </div>
+          </div>
+          <button onClick={saveConfig} className="w-full bg-green-600 hover:bg-green-500 text-white py-2 rounded-lg flex items-center justify-center gap-2">
+            <Save size={16} /> Salvar Configuração
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="fixed bottom-0 left-0 right-0 bg-[#181818] border-t border-gray-800 p-4 shadow-2xl z-50 safe-area-bottom">
+      <div className="max-w-3xl mx-auto flex items-center justify-between">
+        {/* Modes */}
+        <div className="flex gap-2">
+          <button onClick={() => setTimerMode('focus')} className={`p-2 rounded-lg transition-colors ${mode === 'focus' ? 'bg-green-500/20 text-green-500' : 'text-gray-500 hover:bg-gray-800'}`}><Brain size={20} /></button>
+          <button onClick={() => setTimerMode('short')} className={`p-2 rounded-lg transition-colors ${mode === 'short' ? 'bg-blue-500/20 text-blue-500' : 'text-gray-500 hover:bg-gray-800'}`}><Coffee size={20} /></button>
+          <button onClick={() => setTimerMode('long')} className={`p-2 rounded-lg transition-colors ${mode === 'long' ? 'bg-purple-500/20 text-purple-500' : 'text-gray-500 hover:bg-gray-800'}`}><Battery size={20} /></button>
+        </div>
+
+        {/* Timer Display */}
+        <div className={`font-mono text-3xl font-bold tracking-widest cursor-pointer hover:text-green-400 transition-colors select-none ${isActive ? 'text-white animate-pulse' : 'text-gray-400'}`} onClick={toggleTimer}>
+          {formatTime(timeLeft)}
+        </div>
+
+        {/* Controls */}
+        <div className="flex items-center gap-2">
+          <button onClick={toggleTimer} className={`p-3 rounded-full transition-all ${isActive ? 'bg-yellow-600 hover:bg-yellow-500' : 'bg-green-600 hover:bg-green-500'} text-white shadow-lg`}>
+            {isActive ? <Pause size={20} fill="currentColor" /> : <Play size={20} fill="currentColor" className="ml-1" />}
+          </button>
+          <button onClick={resetTimer} className="p-2 text-gray-500 hover:text-white transition-colors"><RotateCcw size={20} /></button>
+          <button onClick={() => setIsEditing(true)} className="p-2 text-gray-500 hover:text-green-500 transition-colors border-l border-gray-700 ml-1"><Settings size={18} /></button>
+        </div>
+      </div>
+    </div>
+  );
+};

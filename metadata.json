@@ -1,0 +1,5 @@
+{
+  "name": "Controle de estudos",
+  "description": "A high-performance, dark-mode study tracking application tailored for serious students. Features hierarchical subject management, progress tracking, and persistent storage.",
+  "requestFramePermissions": []
+}
