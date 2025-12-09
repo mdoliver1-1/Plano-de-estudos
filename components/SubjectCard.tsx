@@ -1,11 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { ChevronDown, ChevronUp, Trash2, Plus, BookOpen, AlertTriangle, X } from 'lucide-react';
-import { Subject, Lesson } from '../types';
+import { Subject, Lesson, ActiveSession } from '../types';
 import { ProgressBar } from './ProgressBar';
 import { LessonItem } from './LessonItem';
 
 interface SubjectCardProps {
   subject: Subject;
+  activeSession: ActiveSession | null;
   onToggleAccordion: (id: string) => void;
   onDeleteSubject: (id: string) => void;
   onAddLesson: (subjectId: string, title: string) => void;
@@ -13,22 +14,26 @@ interface SubjectCardProps {
   onDeleteLesson: (subjectId: string, lessonId: string) => void;
   onOpenNote: (subjectId: string, lessonId: string) => void;
   onOpenFlashcards: (subjectId: string, lessonId: string) => void;
+  onOpenStats: (subjectId: string, lessonId: string) => void;
+  onPlaySession: (subjectId: string, lessonId: string) => void;
 }
 
 export const SubjectCard: React.FC<SubjectCardProps> = ({
   subject,
+  activeSession,
   onToggleAccordion,
   onDeleteSubject,
   onAddLesson,
   onToggleLesson,
   onDeleteLesson,
   onOpenNote,
-  onOpenFlashcards
+  onOpenFlashcards,
+  onOpenStats,
+  onPlaySession
 }) => {
   const [newLessonTitle, setNewLessonTitle] = useState('');
   const [isDeleting, setIsDeleting] = useState(false);
 
-  // Auto-reset delete state after 3 seconds if not confirmed
   useEffect(() => {
     let timeout: ReturnType<typeof setTimeout>;
     if (isDeleting) {
@@ -50,7 +55,7 @@ export const SubjectCard: React.FC<SubjectCardProps> = ({
   };
 
   const handleDeleteClick = (e: React.MouseEvent) => {
-    e.stopPropagation(); // Stop click from bubbling to accordion
+    e.stopPropagation(); 
     if (isDeleting) {
       onDeleteSubject(subject.id);
     } else {
@@ -63,26 +68,20 @@ export const SubjectCard: React.FC<SubjectCardProps> = ({
     setIsDeleting(false);
   };
 
-  // Sort lessons: Revision Due > Incomplete > Completed
   const sortedLessons = [...subject.lessons].sort((a, b) => {
     const isDueA = a.completed && a.revisionDate && new Date(a.revisionDate) <= new Date();
     const isDueB = b.completed && b.revisionDate && new Date(b.revisionDate) <= new Date();
     
     if (isDueA && !isDueB) return -1;
     if (!isDueA && isDueB) return 1;
-    
-    // Put incomplete before completed (if not due for revision)
     if (a.completed === b.completed) return 0;
     return a.completed ? 1 : -1;
   });
 
   return (
     <div className={`rounded-xl shadow-lg mb-4 overflow-hidden border transition-all duration-300 ${subject.isOpen ? 'border-green-500/50 shadow-[0_0_15px_rgba(34,197,94,0.1)]' : 'border-gray-800 bg-[#1e1e1e]'}`}>
-      {/* Accordion Header Wrapper */}
       <div className={`p-4 cursor-pointer transition-colors ${subject.isOpen ? 'bg-[#1a1a1a]' : 'hover:bg-[#252525]'}`}>
         <div className="flex items-center justify-between mb-2">
-          
-          {/* LEFT SIDE: Clickable Toggle */}
           <div 
             className="flex items-center gap-3 flex-1 select-none py-1 min-w-0"
             onClick={() => onToggleAccordion(subject.id)}
@@ -93,7 +92,6 @@ export const SubjectCard: React.FC<SubjectCardProps> = ({
             <h3 className={`text-lg font-bold truncate transition-colors ${subject.isOpen ? 'text-white' : 'text-gray-300'}`}>{subject.name}</h3>
           </div>
 
-          {/* RIGHT SIDE: Actions */}
           <div className="flex items-center gap-2 ml-2 flex-shrink-0">
             {!isDeleting && (
               <span className="text-sm font-bold text-gray-500 hidden sm:inline-block mr-2 font-mono">
@@ -101,7 +99,6 @@ export const SubjectCard: React.FC<SubjectCardProps> = ({
               </span>
             )}
             
-            {/* Delete Button Area with Two-Step Logic */}
             <div className="relative z-20 flex items-center">
               {isDeleting ? (
                 <div className="flex items-center bg-red-900/20 rounded-lg overflow-hidden border border-red-900/50 animate-in fade-in slide-in-from-right-2 duration-200">
@@ -133,7 +130,6 @@ export const SubjectCard: React.FC<SubjectCardProps> = ({
               )}
             </div>
 
-            {/* Chevron - Clickable Toggle */}
             <div 
               className="p-1 cursor-pointer text-gray-500 ml-1"
               onClick={() => onToggleAccordion(subject.id)}
@@ -143,16 +139,13 @@ export const SubjectCard: React.FC<SubjectCardProps> = ({
           </div>
         </div>
         
-        {/* Progress Bar - Clickable Toggle */}
         <div onClick={() => onToggleAccordion(subject.id)}>
           <ProgressBar percentage={percentage} />
         </div>
       </div>
 
-      {/* Accordion Body */}
       {subject.isOpen && (
         <div className="p-4 border-t border-gray-800 bg-[#151515]">
-          {/* Add Lesson Form */}
           <form onSubmit={handleAddLesson} className="flex gap-2 mb-4">
             <input
               type="text"
@@ -170,7 +163,6 @@ export const SubjectCard: React.FC<SubjectCardProps> = ({
             </button>
           </form>
 
-          {/* Lessons List */}
           <div className="space-y-1">
             {subject.lessons.length === 0 ? (
               <p className="text-center text-gray-600 py-6 italic text-sm">Adicione aulas para começar o progresso.</p>
@@ -179,10 +171,13 @@ export const SubjectCard: React.FC<SubjectCardProps> = ({
                 <LessonItem
                   key={lesson.id}
                   lesson={lesson}
+                  isPlaying={activeSession?.lId === lesson.id}
                   onToggle={(lid) => onToggleLesson(subject.id, lid)}
                   onDelete={(lid) => onDeleteLesson(subject.id, lid)}
                   onOpenNote={(lid) => onOpenNote(subject.id, lid)}
                   onOpenFlashcards={(lid) => onOpenFlashcards(subject.id, lid)}
+                  onOpenStats={(lid) => onOpenStats(subject.id, lid)}
+                  onPlay={(lid) => onPlaySession(subject.id, lid)}
                 />
               ))
             )}

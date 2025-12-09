@@ -1,49 +1,90 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Play, Pause, RotateCcw, Coffee, Brain, Battery, Settings, Save } from 'lucide-react';
-import { TimerSettings } from '../types';
+import { Play, Pause, RotateCcw, Coffee, Brain, Battery, Settings, Save, StopCircle, Clock } from 'lucide-react';
+import { TimerSettings, ActiveSession } from '../types';
 
 interface PomodoroProps {
   initialSettings: TimerSettings;
   onSaveSettings: (settings: TimerSettings) => void;
+  activeSession: ActiveSession | null;
+  onPauseSession: () => void;
+  onStopSession: () => void;
 }
 
-export const Pomodoro: React.FC<PomodoroProps> = ({ initialSettings, onSaveSettings }) => {
+export const Pomodoro: React.FC<PomodoroProps> = ({ 
+    initialSettings, 
+    onSaveSettings,
+    activeSession,
+    onPauseSession,
+    onStopSession
+}) => {
+  // --- CLASSIC POMODORO STATE ---
   const [settings, setSettings] = useState<TimerSettings>(initialSettings);
   const [mode, setMode] = useState<'focus' | 'short' | 'long'>('focus');
   const [timeLeft, setTimeLeft] = useState(initialSettings.focus * 60);
   const [isActive, setIsActive] = useState(false);
-  const [isEditing, setIsEditing] = useState(false); // Config mode
-  
-  // Temp state for editing
+  const [isEditing, setIsEditing] = useState(false);
   const [editValues, setEditValues] = useState<TimerSettings>(initialSettings);
+  
+  // --- SESSION STOPWATCH STATE ---
+  const [elapsedTime, setElapsedTime] = useState(0);
 
   const audioContextRef = useRef<AudioContext | null>(null);
 
-  // When props change (plan switched), update internal state
+  // Sync settings when plan changes
   useEffect(() => {
     setSettings(initialSettings);
     setEditValues(initialSettings);
-    setIsActive(false);
-    // Reset time based on current mode
-    if (mode === 'focus') setTimeLeft(initialSettings.focus * 60);
-    if (mode === 'short') setTimeLeft(initialSettings.short * 60);
-    if (mode === 'long') setTimeLeft(initialSettings.long * 60);
+    if (!activeSession) {
+        setIsActive(false);
+        if (mode === 'focus') setTimeLeft(initialSettings.focus * 60);
+        if (mode === 'short') setTimeLeft(initialSettings.short * 60);
+        if (mode === 'long') setTimeLeft(initialSettings.long * 60);
+    }
   }, [initialSettings]);
 
+  // --- EFFECT: ACTIVE SESSION STOPWATCH ---
   useEffect(() => {
     let interval: ReturnType<typeof setInterval>;
 
-    if (isActive && timeLeft > 0) {
+    if (activeSession) {
+        // Reset classic timer if running
+        setIsActive(false); 
+
+        const updateElapsed = () => {
+            const currentSessionTime = activeSession.isPaused ? 0 : (Date.now() - activeSession.startTime);
+            setElapsedTime(activeSession.accumulatedTime + currentSessionTime);
+        };
+
+        // Update immediately
+        updateElapsed();
+
+        if (!activeSession.isPaused) {
+            interval = setInterval(updateElapsed, 1000);
+        }
+    } else {
+        setElapsedTime(0);
+    }
+
+    return () => clearInterval(interval);
+  }, [activeSession]);
+
+
+  // --- EFFECT: CLASSIC TIMER ---
+  useEffect(() => {
+    let interval: ReturnType<typeof setInterval>;
+
+    // Only run classic timer if no active session
+    if (!activeSession && isActive && timeLeft > 0) {
       interval = setInterval(() => {
         setTimeLeft((prev) => prev - 1);
       }, 1000);
-    } else if (timeLeft === 0 && isActive) {
+    } else if (!activeSession && timeLeft === 0 && isActive) {
       setIsActive(false);
       playAlert();
     }
 
     return () => clearInterval(interval);
-  }, [isActive, timeLeft]);
+  }, [isActive, timeLeft, activeSession]);
 
   const playAlert = () => {
     if (!audioContextRef.current) {
@@ -65,6 +106,7 @@ export const Pomodoro: React.FC<PomodoroProps> = ({ initialSettings, onSaveSetti
     oscillator.stop(ctx.currentTime + 0.5);
   };
 
+  // --- HELPERS ---
   const toggleTimer = () => setIsActive(!isActive);
   
   const resetTimer = () => {
@@ -84,15 +126,28 @@ export const Pomodoro: React.FC<PomodoroProps> = ({ initialSettings, onSaveSetti
     return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
   };
 
+  // Format HH:MM:SS for stopwatch
+  const formatElapsedTime = (ms: number) => {
+      const totalSeconds = Math.floor(ms / 1000);
+      const hours = Math.floor(totalSeconds / 3600);
+      const minutes = Math.floor((totalSeconds % 3600) / 60);
+      const seconds = totalSeconds % 60;
+      
+      const hh = hours > 0 ? `${hours.toString().padStart(2, '0')}:` : '';
+      const mm = minutes.toString().padStart(2, '0');
+      const ss = seconds.toString().padStart(2, '0');
+      return `${hh}${mm}:${ss}`;
+  };
+
   const saveConfig = () => {
     onSaveSettings(editValues);
     setSettings(editValues);
     setIsEditing(false);
-    // Reset current timer to new setting
     setIsActive(false);
     setTimeLeft(editValues[mode] * 60);
   };
 
+  // --- RENDER: CONFIG MODE ---
   if (isEditing) {
     return (
       <div className="fixed bottom-0 left-0 right-0 bg-[#181818] border-t border-gray-800 p-4 shadow-2xl z-50">
@@ -138,6 +193,44 @@ export const Pomodoro: React.FC<PomodoroProps> = ({ initialSettings, onSaveSetti
     );
   }
 
+  // --- RENDER: STOPWATCH MODE (ACTIVE SESSION) ---
+  if (activeSession) {
+      return (
+        <div className="fixed bottom-0 left-0 right-0 bg-[#181818] border-t-2 border-green-500 p-4 shadow-2xl z-50 safe-area-bottom">
+            <div className="max-w-3xl mx-auto flex items-center justify-between">
+                <div className="flex flex-col min-w-0 pr-4">
+                    <span className="text-[10px] text-green-500 font-bold uppercase tracking-wider flex items-center gap-1 animate-pulse">
+                        <span className="w-2 h-2 rounded-full bg-green-500 inline-block"></span>
+                        Estudando
+                    </span>
+                    <span className="text-white font-bold truncate">{activeSession.title}</span>
+                </div>
+
+                <div className="font-mono text-3xl font-bold text-white tracking-widest">
+                    {formatElapsedTime(elapsedTime)}
+                </div>
+
+                <div className="flex items-center gap-2">
+                    <button 
+                        onClick={onPauseSession} 
+                        className={`p-3 rounded-full transition-all ${activeSession.isPaused ? 'bg-yellow-600 hover:bg-yellow-500' : 'bg-gray-700 hover:bg-gray-600'} text-white shadow-lg`}
+                    >
+                         {activeSession.isPaused ? <Play size={20} fill="currentColor" className="ml-1"/> : <Pause size={20} fill="currentColor" />}
+                    </button>
+                    <button 
+                        onClick={onStopSession} 
+                        className="p-3 bg-red-600 hover:bg-red-500 rounded-full text-white transition-colors shadow-lg"
+                        title="Finalizar e Salvar"
+                    >
+                        <StopCircle size={20} fill="currentColor" />
+                    </button>
+                </div>
+            </div>
+        </div>
+      );
+  }
+
+  // --- RENDER: CLASSIC MODE ---
   return (
     <div className="fixed bottom-0 left-0 right-0 bg-[#181818] border-t border-gray-800 p-4 shadow-2xl z-50 safe-area-bottom">
       <div className="max-w-3xl mx-auto flex items-center justify-between">

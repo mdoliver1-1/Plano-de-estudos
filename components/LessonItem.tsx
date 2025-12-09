@@ -1,16 +1,28 @@
 import React, { useState, useEffect } from 'react';
-import { Trash2, CheckCircle2, Circle, X, AlertTriangle, Pencil, Layers } from 'lucide-react';
+import { Trash2, CheckCircle2, Circle, X, AlertTriangle, Pencil, Layers, BarChart2, Play, Pause } from 'lucide-react';
 import { Lesson } from '../types';
 
 interface LessonItemProps {
   lesson: Lesson;
+  isPlaying: boolean;
   onToggle: (lessonId: string) => void;
   onDelete: (lessonId: string) => void;
   onOpenNote: (lessonId: string) => void;
   onOpenFlashcards: (lessonId: string) => void;
+  onOpenStats: (lessonId: string) => void;
+  onPlay: (lessonId: string) => void;
 }
 
-export const LessonItem: React.FC<LessonItemProps> = ({ lesson, onToggle, onDelete, onOpenNote, onOpenFlashcards }) => {
+export const LessonItem: React.FC<LessonItemProps> = ({ 
+    lesson, 
+    isPlaying,
+    onToggle, 
+    onDelete, 
+    onOpenNote, 
+    onOpenFlashcards, 
+    onOpenStats,
+    onPlay
+}) => {
   const [isDeleting, setIsDeleting] = useState(false);
 
   useEffect(() => {
@@ -45,19 +57,36 @@ export const LessonItem: React.FC<LessonItemProps> = ({ lesson, onToggle, onDele
     onOpenFlashcards(lesson.id);
   };
 
+  const handleStatsClick = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    onOpenStats(lesson.id);
+  };
+
+  const handlePlayClick = (e: React.MouseEvent) => {
+      e.stopPropagation();
+      onPlay(lesson.id);
+  };
+
   const isRevisionDue = lesson.completed && lesson.revisionDate && new Date(lesson.revisionDate) <= new Date();
   const hasNotes = lesson.notes && lesson.notes.trim().length > 0;
   const cardCount = lesson.flashcards ? lesson.flashcards.length : 0;
+  const hasMetrics = lesson.metrics && (lesson.metrics.studyTime > 0 || lesson.metrics.questionsTotal > 0);
 
   return (
-    <div className={`flex items-center justify-between p-4 mb-3 rounded-xl group transition-all border ${isRevisionDue ? 'bg-yellow-900/10 border-yellow-700/50' : 'bg-[#252525] border-transparent hover:border-gray-700 hover:bg-[#2a2a2a]'}`}>
+    <div className={`flex items-center justify-between p-4 mb-3 rounded-xl group transition-all border ${
+        isPlaying 
+        ? 'bg-[#1a251a] border-green-500 shadow-[0_0_10px_rgba(34,197,94,0.2)]' 
+        : isRevisionDue 
+            ? 'bg-yellow-900/10 border-yellow-700/50' 
+            : 'bg-[#252525] border-transparent hover:border-gray-700 hover:bg-[#2a2a2a]'
+    }`}>
       <div 
-        className="flex items-center flex-1 cursor-pointer min-w-0 py-1" 
+        className="flex items-center flex-1 cursor-pointer min-w-0 py-1 mr-4" 
         onClick={() => onToggle(lesson.id)}
       >
         <button 
           type="button"
-          className={`mr-4 flex-shrink-0 transition-colors ${lesson.completed ? 'text-green-500' : 'text-gray-600 group-hover:text-gray-500'}`}
+          className={`mr-3 sm:mr-4 flex-shrink-0 transition-colors ${lesson.completed ? 'text-green-500' : 'text-gray-600 group-hover:text-gray-500'}`}
         >
           {lesson.completed ? (
             <CheckCircle2 size={26} fill="currentColor" className="text-green-900" />
@@ -66,17 +95,25 @@ export const LessonItem: React.FC<LessonItemProps> = ({ lesson, onToggle, onDele
           )}
         </button>
         
-        <div className="flex flex-col min-w-0 gap-1">
+        <div className="flex flex-col min-w-0 gap-1 flex-1">
             <div className="flex items-center gap-2 flex-wrap">
                 <span 
-                className={`text-base sm:text-lg truncate transition-all font-medium ${
-                    lesson.completed ? 'line-through text-gray-500' : 'text-gray-200'
+                className={`text-base sm:text-lg truncate font-medium ${
+                    lesson.completed ? 'line-through text-gray-500' : isPlaying ? 'text-green-400 font-bold' : 'text-gray-200'
                 }`}
                 >
                 {lesson.title}
                 </span>
-                {isRevisionDue && (
-                    <div className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-yellow-500/20 text-yellow-500 text-[10px] font-bold uppercase tracking-wider border border-yellow-500/30">
+                
+                {isPlaying && (
+                    <div className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-green-500/20 text-green-500 text-[10px] font-bold uppercase tracking-wider border border-green-500/30 whitespace-nowrap">
+                        <span className="w-1.5 h-1.5 rounded-full bg-green-500 inline-block animate-pulse"></span>
+                        ESTUDANDO
+                    </div>
+                )}
+                
+                {isRevisionDue && !isPlaying && (
+                    <div className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-yellow-500/20 text-yellow-500 text-[10px] font-bold uppercase tracking-wider border border-yellow-500/30 whitespace-nowrap">
                         <AlertTriangle size={10} />
                         Revisar
                     </div>
@@ -91,14 +128,46 @@ export const LessonItem: React.FC<LessonItemProps> = ({ lesson, onToggle, onDele
       </div>
       
       {/* Actions */}
-      <div className="ml-3 flex items-center gap-1 flex-shrink-0 relative z-10">
+      <div className="flex items-center gap-1 flex-shrink-0 relative z-10">
         
+        {/* Play Button - Fixed Width to prevent jumping */}
+        {!isDeleting && (
+            <button
+                type="button"
+                onClick={handlePlayClick}
+                className={`w-10 h-10 flex items-center justify-center rounded-lg transition-colors relative mr-2 ${
+                    isPlaying
+                    ? 'text-white bg-green-600 hover:bg-green-500 shadow-md shadow-green-900/40' 
+                    : 'text-gray-400 bg-gray-800 hover:bg-green-600 hover:text-white'
+                }`}
+                title={isPlaying ? "Pausar/Parar (no rodapé)" : "Iniciar Cronômetro"}
+            >
+                {isPlaying ? <Pause size={18} fill="currentColor" /> : <Play size={18} fill="currentColor" className="ml-0.5"/>}
+            </button>
+        )}
+
+        {/* Stats Button */}
+        {!isDeleting && (
+          <button
+            type="button"
+            onClick={handleStatsClick}
+            className={`w-10 h-10 flex items-center justify-center rounded-lg transition-colors relative ${
+              hasMetrics
+                ? 'text-cyan-400 bg-cyan-400/10 hover:bg-cyan-400/20' 
+                : 'text-gray-600 hover:text-gray-300 hover:bg-gray-700'
+            }`}
+            title="Métricas e Questões"
+          >
+            <BarChart2 size={18} fill={hasMetrics ? "currentColor" : "none"} />
+          </button>
+        )}
+
         {/* Flashcards Button */}
         {!isDeleting && (
           <button
             type="button"
             onClick={handleFlashcardsClick}
-            className={`p-2.5 rounded-lg transition-colors relative ${
+            className={`w-10 h-10 flex items-center justify-center rounded-lg transition-colors relative ${
               cardCount > 0
                 ? 'text-purple-400 bg-purple-400/10 hover:bg-purple-400/20' 
                 : 'text-gray-600 hover:text-gray-300 hover:bg-gray-700'
@@ -119,7 +188,7 @@ export const LessonItem: React.FC<LessonItemProps> = ({ lesson, onToggle, onDele
           <button
             type="button"
             onClick={handleNoteClick}
-            className={`p-2.5 rounded-lg transition-colors ${
+            className={`w-10 h-10 flex items-center justify-center rounded-lg transition-colors ${
               hasNotes 
                 ? 'text-blue-400 bg-blue-400/10 hover:bg-blue-400/20' 
                 : 'text-gray-600 hover:text-gray-300 hover:bg-gray-700'
@@ -137,14 +206,14 @@ export const LessonItem: React.FC<LessonItemProps> = ({ lesson, onToggle, onDele
               <button
                 type="button"
                 onClick={handleDelete}
-                className="px-3 py-2 text-xs font-bold text-red-400 hover:bg-red-500/20 transition-colors"
+                className="px-3 py-2 text-xs font-bold text-red-400 hover:bg-red-500/20 transition-colors h-10"
               >
                 Apagar
               </button>
               <button
                 type="button"
                 onClick={handleCancel}
-                className="px-2 py-2 text-gray-400 hover:text-white hover:bg-gray-700/50 transition-colors border-l border-red-900/30"
+                className="px-2 py-2 text-gray-400 hover:text-white hover:bg-gray-700/50 transition-colors border-l border-red-900/30 h-10 flex items-center"
               >
                 <X size={14} />
               </button>
@@ -153,7 +222,7 @@ export const LessonItem: React.FC<LessonItemProps> = ({ lesson, onToggle, onDele
             <button 
               type="button"
               onClick={handleDelete}
-              className="p-2.5 text-gray-600 hover:text-red-400 hover:bg-red-400/10 rounded-lg transition-all"
+              className="w-10 h-10 flex items-center justify-center text-gray-600 hover:text-red-400 hover:bg-red-400/10 rounded-lg transition-all"
               aria-label="Excluir aula"
             >
               <Trash2 size={18} />
