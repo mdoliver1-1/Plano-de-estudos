@@ -127,19 +127,6 @@ export const Pomodoro: React.FC<PomodoroProps> = ({
     return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
   };
 
-  // Format HH:MM:SS for stopwatch
-  const formatElapsedTime = (ms: number) => {
-      const totalSeconds = Math.floor(ms / 1000);
-      const hours = Math.floor(totalSeconds / 3600);
-      const minutes = Math.floor((totalSeconds % 3600) / 60);
-      const seconds = totalSeconds % 60;
-      
-      const hh = hours > 0 ? `${hours.toString().padStart(2, '0')}:` : '';
-      const mm = minutes.toString().padStart(2, '0');
-      const ss = seconds.toString().padStart(2, '0');
-      return `${hh}${mm}:${ss}`;
-  };
-
   const saveConfig = () => {
     onSaveSettings(editValues);
     setSettings(editValues);
@@ -196,44 +183,9 @@ export const Pomodoro: React.FC<PomodoroProps> = ({
 
   // --- RENDER: STOPWATCH MODE (ACTIVE SESSION) ---
   if (activeSession) {
-      return (
-        <div className="fixed bottom-0 left-0 right-0 bg-[#181818]/95 backdrop-blur-md border-t-2 border-green-500 p-4 shadow-[0_-5px_30px_rgba(0,0,0,0.5)] z-50 safe-area-bottom">
-            <div className="max-w-md mx-auto flex items-center justify-between gap-4">
-                
-                {/* 1. LEFT: STOP BUTTON (Soft Red Square) */}
-                <button 
-                    onClick={onStopSession} 
-                    className="w-14 h-14 bg-red-900/30 hover:bg-red-900/50 rounded-xl text-red-500 transition-all shadow-lg active:scale-95 flex items-center justify-center border border-red-500/20"
-                    title="Finalizar Sessão"
-                >
-                    <Square size={20} fill="currentColor" />
-                </button>
-
-                {/* 2. CENTER: TIMER & STATUS */}
-                <div className="flex flex-col items-center justify-center flex-1">
-                    <span className={`text-[10px] font-bold uppercase tracking-widest mb-0.5 ${activeSession.isPaused ? 'text-yellow-500' : 'text-green-500 animate-pulse'}`}>
-                        {activeSession.isPaused ? 'PAUSADO' : 'ESTUDANDO'}
-                    </span>
-                    <div className="font-mono text-4xl text-gray-100 font-medium tracking-wider leading-none">
-                        {formatElapsedTime(elapsedTime)}
-                    </div>
-                </div>
-
-                {/* 3. RIGHT: PLAY/PAUSE BUTTON (Round) */}
-                {/* Logic: If Paused, Show Play (Green). If Running, Show Pause (Yellow). */}
-                <button 
-                    onClick={onPauseSession} 
-                    className={`w-14 h-14 rounded-full transition-all shadow-lg active:scale-95 flex items-center justify-center ${
-                        activeSession.isPaused 
-                        ? 'bg-green-500 hover:bg-green-400 text-black shadow-[0_0_15px_rgba(34,197,94,0.4)]' 
-                        : 'bg-yellow-500 hover:bg-yellow-400 text-black shadow-[0_0_15px_rgba(234,179,8,0.4)]'
-                    }`}
-                >
-                     {activeSession.isPaused ? <Play size={24} fill="currentColor" className="ml-1"/> : <Pause size={24} fill="currentColor" />}
-                </button>
-            </div>
-        </div>
-      );
+      // Returning null to avoid duplicating the timer UI, as requested.
+      // The LessonItem component now handles the visual representation.
+      return null;
   }
 
   // --- RENDER: CLASSIC MODE ---

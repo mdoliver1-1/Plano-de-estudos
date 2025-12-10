@@ -125,13 +125,14 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ users, onSelectUser, o
                 </button>
                 <button 
                   onClick={(e) => { 
-                      e.stopPropagation(); // Critical fix: prevents login when clicking delete
+                      e.preventDefault();
+                      e.stopPropagation(); // CRITICAL: Prevent login click
                       onDeleteUser(user.id); 
                   }}
-                  className="absolute top-2 right-2 p-2 text-gray-600 hover:text-red-400 opacity-0 group-hover:opacity-100 transition-opacity bg-[#1e1e1e]/80 rounded-full"
+                  className="absolute top-2 right-2 p-2 text-gray-600 hover:text-red-400 opacity-0 group-hover:opacity-100 transition-opacity bg-[#1e1e1e]/90 rounded-full z-50 hover:scale-110 shadow-lg"
                   title="Excluir Usuário"
                 >
-                  <Trash2 size={14} />
+                  <Trash2 size={16} />
                 </button>
               </div>
             ))}

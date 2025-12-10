@@ -125,13 +125,18 @@ const App: React.FC = () => {
     loginUser(newUser);
   };
 
+  // --- FIX 1: USER DELETION LOGIC ---
   const deleteUser = (id: string) => {
-    if (confirm('Tem certeza? Todos os dados desse usuário serão perdidos para sempre.')) {
-      const updatedUsers = users.filter(u => u.id !== id);
-      setUsers(updatedUsers);
-      localStorage.setItem(USERS_KEY, JSON.stringify(updatedUsers));
-      localStorage.removeItem(`study-data-${id}`);
-      if (currentUser?.id === id) logoutUser();
+    if (!window.confirm('Tem certeza absoluta? Todos os dados desse usuário serão perdidos para sempre.')) return;
+    
+    // Immediate Update
+    const updatedUsers = users.filter(u => u.id !== id);
+    setUsers(updatedUsers);
+    localStorage.setItem(USERS_KEY, JSON.stringify(updatedUsers));
+    localStorage.removeItem(`study-data-${id}`);
+    
+    if (currentUser?.id === id) {
+        logoutUser();
     }
   };
 
@@ -198,16 +203,28 @@ const App: React.FC = () => {
     setShowPlanMenu(false);
   };
 
-  const deleteCurrentPlan = () => {
+  // --- FIX 2: PLAN DELETION LOGIC ---
+  const deleteCurrentPlan = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation(); // CRITICAL: Prevents menu close before confirmation
+
     if (plans.length <= 1) return alert("Você precisa ter pelo menos um plano ativo.");
-    if (confirm(`Excluir plano "${getCurrentPlan()?.name}"?`)) {
+    
+    const planToDelete = getCurrentPlan();
+    if (window.confirm(`Excluir plano "${planToDelete?.name}" permanentemente?`)) {
       const newPlans = plans.filter(p => p.id !== currentPlanId);
+      const nextPlanId = newPlans[0].id;
+
       setPlans(newPlans);
-      setCurrentPlanId(newPlans[0].id);
+      setCurrentPlanId(nextPlanId);
       setShowPlanMenu(false);
-      // Force sync to storage immediately
+      
+      // Force sync
       if (currentUser) {
-          localStorage.setItem(`study-data-${currentUser.id}`, JSON.stringify({ plans: newPlans, currentPlanId: newPlans[0].id }));
+          localStorage.setItem(`study-data-${currentUser.id}`, JSON.stringify({ 
+              plans: newPlans, 
+              currentPlanId: nextPlanId 
+          }));
       }
     }
   };
@@ -233,7 +250,11 @@ const App: React.FC = () => {
     setShowAddSubject(false);
   };
 
-  const deleteSubject = (id: string) => updateCurrentPlan(plan => ({...plan, subjects: plan.subjects.filter(s => s.id !== id)}));
+  // --- FIX 3: SUBJECT DELETION LOGIC ---
+  const deleteSubject = (id: string) => {
+      // Confirmation handled in Component
+      updateCurrentPlan(plan => ({...plan, subjects: plan.subjects.filter(s => s.id !== id)}));
+  };
   
   const toggleAccordion = (id: string) => updateCurrentPlan(plan => ({...plan, subjects: plan.subjects.map(s => s.id === id ? { ...s, isOpen: !s.isOpen } : s)}));
 
@@ -247,8 +268,10 @@ const App: React.FC = () => {
     }));
   };
 
+  // --- FIX 4: LESSON DELETION LOGIC ---
   const deleteLesson = (sId: string, lId: string) => {
     if (activeSession?.lId === lId) return alert("Pare o timer antes de excluir.");
+    // Confirmation handled in Component
     updateCurrentPlan(plan => ({
       ...plan,
       subjects: plan.subjects.map(s => s.id === sId ? { ...s, lessons: s.lessons.filter(l => l.id !== lId) } : s)
@@ -326,26 +349,52 @@ const App: React.FC = () => {
     setPendingLesson(null);
   };
 
-  // --- TIMER & MODALS ---
+  // --- TIMER & MODALS (MATH FIX) ---
   const handleStartSession = (sId: string, lId: string) => {
     if (activeSession && activeSession.sId === sId && activeSession.lId === lId) {
         handlePauseSession(); return;
     }
     const l = getCurrentPlan()?.subjects.find(s => s.id === sId)?.lessons.find(l => l.id === lId);
     if (!l) return;
+    // START: Accumulated is 0, startTime is NOW.
     setActiveSession({ sId, lId, title: l.title, startTime: Date.now(), accumulatedTime: 0, isPaused: false });
   };
 
   const handlePauseSession = () => {
       if (!activeSession) return;
-      if (activeSession.isPaused) setActiveSession({ ...activeSession, isPaused: false, startTime: Date.now() });
-      else setActiveSession({ ...activeSession, isPaused: true, accumulatedTime: activeSession.accumulatedTime + (Date.now() - activeSession.startTime) });
+      
+      if (activeSession.isPaused) {
+          // RESUMING: Set new start time, keep accumulated time as is.
+          setActiveSession({ 
+              ...activeSession, 
+              isPaused: false, 
+              startTime: Date.now() 
+          });
+      } else {
+          // PAUSING: Calculate delta from last start, add to accumulated, clear start.
+          const now = Date.now();
+          const currentSegmentDuration = now - activeSession.startTime;
+          
+          setActiveSession({ 
+              ...activeSession, 
+              isPaused: true, 
+              accumulatedTime: activeSession.accumulatedTime + currentSegmentDuration,
+              startTime: 0 // Resetting start time as it's not running
+          });
+      }
   };
 
   const handleStopSession = () => {
       if (!activeSession) return;
+      
+      // Calculate final total
       let finalDuration = activeSession.accumulatedTime;
-      if (!activeSession.isPaused) finalDuration += (Date.now() - activeSession.startTime);
+      
+      // If we stop while it's running, we need to add the current segment
+      if (!activeSession.isPaused) {
+          finalDuration += (Date.now() - activeSession.startTime);
+      }
+      
       const minutes = finalDuration / 1000 / 60;
 
       if (minutes > 0) {
@@ -468,7 +517,12 @@ const App: React.FC = () => {
                         </div>
                         <div className="border-t border-gray-700 p-2 bg-[#1a1a1a]">
                             <button onClick={() => { setShowNewPlanInput(true); setShowPlanMenu(false); }} className="w-full flex items-center gap-2 px-3 py-2 text-sm text-gray-300 hover:bg-gray-800 rounded-lg"><Plus size={16} /> Novo Plano</button>
-                            <button onClick={deleteCurrentPlan} className="w-full flex items-center gap-2 px-3 py-2 text-sm text-red-400 hover:bg-red-900/20 rounded-lg mt-1 mb-1"><Trash2 size={16} /> Excluir</button>
+                            <button 
+                                onClick={deleteCurrentPlan} 
+                                className="w-full flex items-center gap-2 px-3 py-2 text-sm text-red-400 hover:bg-red-900/20 rounded-lg mt-1 mb-1"
+                            >
+                                <Trash2 size={16} /> Excluir
+                            </button>
                             <div className="w-full h-px bg-gray-700 my-1"></div>
                             <button onClick={logoutUser} className="w-full flex items-center gap-2 px-3 py-2 text-sm bg-red-900/10 text-red-400 hover:bg-red-900/20 rounded-lg font-bold"><LogOut size={16} /> Sair / Trocar</button>
                         </div>
@@ -548,6 +602,8 @@ const App: React.FC = () => {
                     onOpenFlashcards={openFlashcardsModal}
                     onOpenStats={openStatsModal}
                     onPlaySession={handleStartSession}
+                    onPauseSession={handlePauseSession}
+                    onStopSession={handleStopSession}
                   />
                 ))}
               </div>

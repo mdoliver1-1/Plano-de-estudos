@@ -179,7 +179,7 @@ export const AchievementsTab: React.FC<AchievementsTabProps> = ({ user, plan, su
                 className="flex flex-col items-center group relative focus:outline-none"
               >
                 {/* 3D Medal Container - COIN STYLE - STRICTLY CIRCULAR */}
-                <div className={`relative w-20 h-20 rounded-full min-w-[5rem] min-h-[5rem] transition-all duration-500 ${isUnlocked ? `${style.glow} scale-100 hover:scale-105` : 'grayscale opacity-60 scale-95'}`}>
+                <div className={`relative w-20 h-20 rounded-full !rounded-full min-w-[5rem] min-h-[5rem] transition-all duration-500 ${isUnlocked ? `${style.glow} scale-100 hover:scale-105` : 'grayscale opacity-60 scale-95'}`}>
                    
                    {/* Metal Ring (Conic Gradient) */}
                    <div className={`absolute inset-0 rounded-full ${style.ring}`}></div>

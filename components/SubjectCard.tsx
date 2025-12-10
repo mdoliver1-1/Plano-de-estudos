@@ -17,6 +17,8 @@ interface SubjectCardProps {
   onOpenFlashcards: (subjectId: string, lessonId: string) => void;
   onOpenStats: (subjectId: string, lessonId: string) => void;
   onPlaySession: (subjectId: string, lessonId: string) => void;
+  onPauseSession: () => void;
+  onStopSession: () => void;
 }
 
 export const SubjectCard: React.FC<SubjectCardProps> = ({
@@ -30,7 +32,9 @@ export const SubjectCard: React.FC<SubjectCardProps> = ({
   onOpenNote,
   onOpenFlashcards,
   onOpenStats,
-  onPlaySession
+  onPlaySession,
+  onPauseSession,
+  onStopSession
 }) => {
   const [newLessonTitle, setNewLessonTitle] = useState('');
   const [newLessonLink, setNewLessonLink] = useState('');
@@ -61,8 +65,12 @@ export const SubjectCard: React.FC<SubjectCardProps> = ({
 
   const handleDeleteClick = (e: React.MouseEvent) => {
     e.stopPropagation(); 
+    e.preventDefault();
+    
     if (isDeleting) {
-      onDeleteSubject(subject.id);
+      if(window.confirm(`Excluir disciplina "${subject.name}" e todas as suas aulas?`)) {
+          onDeleteSubject(subject.id);
+      }
     } else {
       setIsDeleting(true);
     }
@@ -196,13 +204,15 @@ export const SubjectCard: React.FC<SubjectCardProps> = ({
                 <LessonItem
                   key={lesson.id}
                   lesson={lesson}
-                  isPlaying={activeSession?.lId === lesson.id}
+                  activeSession={activeSession}
                   onToggle={(lid) => onToggleLesson(subject.id, lid)}
                   onDelete={(lid) => onDeleteLesson(subject.id, lid)}
                   onOpenNote={(lid) => onOpenNote(subject.id, lid)}
                   onOpenFlashcards={(lid) => onOpenFlashcards(subject.id, lid)}
                   onOpenStats={(lid) => onOpenStats(subject.id, lid)}
                   onPlay={(lid) => onPlaySession(subject.id, lid)}
+                  onPause={onPauseSession}
+                  onStop={onStopSession}
                 />
               ))
             )}
