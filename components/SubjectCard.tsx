@@ -1,5 +1,6 @@
+
 import React, { useState, useEffect } from 'react';
-import { ChevronDown, ChevronUp, Trash2, Plus, BookOpen, AlertTriangle, X } from 'lucide-react';
+import { ChevronDown, ChevronUp, Trash2, Plus, BookOpen, AlertTriangle, X, Link as LinkIcon } from 'lucide-react';
 import { Subject, Lesson, ActiveSession } from '../types';
 import { ProgressBar } from './ProgressBar';
 import { LessonItem } from './LessonItem';
@@ -9,7 +10,7 @@ interface SubjectCardProps {
   activeSession: ActiveSession | null;
   onToggleAccordion: (id: string) => void;
   onDeleteSubject: (id: string) => void;
-  onAddLesson: (subjectId: string, title: string) => void;
+  onAddLesson: (subjectId: string, title: string, link?: string) => void;
   onToggleLesson: (subjectId: string, lessonId: string) => void;
   onDeleteLesson: (subjectId: string, lessonId: string) => void;
   onOpenNote: (subjectId: string, lessonId: string) => void;
@@ -32,6 +33,8 @@ export const SubjectCard: React.FC<SubjectCardProps> = ({
   onPlaySession
 }) => {
   const [newLessonTitle, setNewLessonTitle] = useState('');
+  const [newLessonLink, setNewLessonLink] = useState('');
+  const [showLinkInput, setShowLinkInput] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
 
   useEffect(() => {
@@ -49,8 +52,10 @@ export const SubjectCard: React.FC<SubjectCardProps> = ({
   const handleAddLesson = (e: React.FormEvent) => {
     e.preventDefault();
     if (newLessonTitle.trim()) {
-      onAddLesson(subject.id, newLessonTitle.trim());
+      onAddLesson(subject.id, newLessonTitle.trim(), newLessonLink.trim());
       setNewLessonTitle('');
+      setNewLessonLink('');
+      setShowLinkInput(false);
     }
   };
 
@@ -146,21 +151,41 @@ export const SubjectCard: React.FC<SubjectCardProps> = ({
 
       {subject.isOpen && (
         <div className="p-4 border-t border-gray-800 bg-[#151515]">
-          <form onSubmit={handleAddLesson} className="flex gap-2 mb-4">
-            <input
-              type="text"
-              value={newLessonTitle}
-              onChange={(e) => setNewLessonTitle(e.target.value)}
-              placeholder="Nova aula..."
-              className="flex-1 bg-[#252525] text-gray-100 border border-transparent focus:border-green-500/50 rounded-xl px-4 py-3 focus:outline-none placeholder-gray-600 transition-all text-sm"
-            />
-            <button
-              type="submit"
-              disabled={!newLessonTitle.trim()}
-              className="bg-green-600 hover:bg-green-500 disabled:opacity-50 disabled:cursor-not-allowed text-white p-3 rounded-xl transition-colors flex items-center justify-center min-w-[50px] shadow-lg shadow-green-900/20"
-            >
-              <Plus size={20} />
-            </button>
+          <form onSubmit={handleAddLesson} className="flex flex-col gap-2 mb-4">
+            <div className="flex gap-2">
+                <input
+                type="text"
+                value={newLessonTitle}
+                onChange={(e) => setNewLessonTitle(e.target.value)}
+                placeholder="Nova aula..."
+                className="flex-1 bg-[#252525] text-gray-100 border border-transparent focus:border-green-500/50 rounded-xl px-4 py-3 focus:outline-none placeholder-gray-600 transition-all text-sm"
+                />
+                <button
+                type="button"
+                onClick={() => setShowLinkInput(!showLinkInput)}
+                className={`p-3 rounded-xl transition-colors ${showLinkInput ? 'bg-blue-500/20 text-blue-400' : 'bg-[#252525] text-gray-500 hover:text-gray-300'}`}
+                title="Adicionar Link"
+                >
+                   <LinkIcon size={20} />
+                </button>
+                <button
+                type="submit"
+                disabled={!newLessonTitle.trim()}
+                className="bg-green-600 hover:bg-green-500 disabled:opacity-50 disabled:cursor-not-allowed text-white p-3 rounded-xl transition-colors flex items-center justify-center min-w-[50px] shadow-lg shadow-green-900/20"
+                >
+                <Plus size={20} />
+                </button>
+            </div>
+            
+            {showLinkInput && (
+                <input
+                type="url"
+                value={newLessonLink}
+                onChange={(e) => setNewLessonLink(e.target.value)}
+                placeholder="https://..."
+                className="w-full bg-[#1e1e1e] text-blue-400 border border-gray-700 rounded-lg px-4 py-2 focus:outline-none text-xs animate-in fade-in slide-in-from-top-1"
+                />
+            )}
           </form>
 
           <div className="space-y-1">

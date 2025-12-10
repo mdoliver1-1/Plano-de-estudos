@@ -1,5 +1,6 @@
+
 import React, { useState, useEffect } from 'react';
-import { Trash2, CheckCircle2, Circle, X, AlertTriangle, Pencil, Layers, BarChart2, Play, Pause } from 'lucide-react';
+import { Trash2, CheckCircle2, Circle, X, AlertTriangle, Pencil, Layers, BarChart2, Play, Pause, ExternalLink } from 'lucide-react';
 import { Lesson } from '../types';
 
 interface LessonItemProps {
@@ -67,6 +68,13 @@ export const LessonItem: React.FC<LessonItemProps> = ({
       onPlay(lesson.id);
   };
 
+  const handleLinkClick = (e: React.MouseEvent) => {
+      e.stopPropagation();
+      if (lesson.materialLink) {
+          window.open(lesson.materialLink, '_blank');
+      }
+  };
+
   const isRevisionDue = lesson.completed && lesson.revisionDate && new Date(lesson.revisionDate) <= new Date();
   const hasNotes = lesson.notes && lesson.notes.trim().length > 0;
   const cardCount = lesson.flashcards ? lesson.flashcards.length : 0;
@@ -130,6 +138,18 @@ export const LessonItem: React.FC<LessonItemProps> = ({
       {/* Actions */}
       <div className="flex items-center gap-1 flex-shrink-0 relative z-10">
         
+        {/* Material Link */}
+        {lesson.materialLink && !isDeleting && (
+            <button
+                type="button"
+                onClick={handleLinkClick}
+                className="w-10 h-10 flex items-center justify-center rounded-lg text-blue-400 bg-blue-400/10 hover:bg-blue-400/20 transition-colors"
+                title="Abrir Material"
+            >
+                <ExternalLink size={16} />
+            </button>
+        )}
+
         {/* Play Button - Fixed Width to prevent jumping */}
         {!isDeleting && (
             <button

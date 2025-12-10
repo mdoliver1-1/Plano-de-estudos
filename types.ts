@@ -1,3 +1,4 @@
+
 export interface UserProfile {
   id: string;
   name: string;
@@ -23,7 +24,9 @@ export interface Lesson {
   title: string;
   completed: boolean;
   revisionDate?: string | null;
+  revisionQueue?: number[]; // Array of timestamps for future revisions (Cycle logic)
   notes?: string;
+  materialLink?: string; // Optional URL for study material
   flashcards?: Flashcard[];
   metrics?: LessonMetrics; // New: Performance data
 }
@@ -41,6 +44,10 @@ export interface TimerSettings {
   long: number;
 }
 
+export interface Inventory {
+  ice: number; // Freeze streak item
+}
+
 export interface StudyPlan {
   id: string;
   name: string;
@@ -49,6 +56,8 @@ export interface StudyPlan {
   createdAt: number;
   streak?: number;
   lastStudyDate?: number;
+  inventory?: Inventory; // Gamification items
+  bonusXP?: number; // Added for Developer Mode / Special Events
 }
 
 export interface ActiveSession {
