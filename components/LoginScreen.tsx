@@ -1,6 +1,6 @@
 
 import React, { useState } from 'react';
-import { User, Plus, Trash2, Briefcase } from 'lucide-react';
+import { User, Plus, Trash2, Briefcase, ChevronDown } from 'lucide-react';
 import { UserProfile, CAREERS } from '../types';
 
 interface LoginScreenProps {
@@ -86,7 +86,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ users, onSelectUser, o
                             <option key={key} value={key}>{data.label}</option>
                         ))}
                     </select>
-                    <Briefcase size={16} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
+                    <ChevronDown size={16} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
                  </div>
                  <p className="text-[10px] text-gray-500 mt-2">Isso define as patentes da sua jornada (Ex: Nível 100 = {CAREERS[selectedCareer].ranks[5]}).</p>
               </div>
@@ -126,7 +126,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ users, onSelectUser, o
                 <button 
                   onClick={(e) => { 
                       e.preventDefault();
-                      e.stopPropagation(); // CRITICAL: Prevent login click
+                      e.stopPropagation(); // CRITICAL: Stop event from triggering login
                       onDeleteUser(user.id); 
                   }}
                   className="absolute top-2 right-2 p-2 text-gray-600 hover:text-red-400 opacity-0 group-hover:opacity-100 transition-opacity bg-[#1e1e1e]/90 rounded-full z-50 hover:scale-110 shadow-lg"

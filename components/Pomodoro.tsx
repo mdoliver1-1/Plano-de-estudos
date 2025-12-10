@@ -183,8 +183,7 @@ export const Pomodoro: React.FC<PomodoroProps> = ({
 
   // --- RENDER: STOPWATCH MODE (ACTIVE SESSION) ---
   if (activeSession) {
-      // Returning null to avoid duplicating the timer UI, as requested.
-      // The LessonItem component now handles the visual representation.
+      // Returning null as per requirements to avoid duplicate UI since LessonItem handles the Mini-Player
       return null;
   }
 

@@ -168,7 +168,6 @@ export const AchievementsTab: React.FC<AchievementsTabProps> = ({ user, plan, su
         </h3>
         <div className="grid grid-cols-3 sm:grid-cols-4 gap-y-8 gap-x-4">
           {MEDALS.map((medal) => {
-            // Check Stats OR Forced Unlock
             const isUnlocked = forcedMedals.includes(medal.id) || medal.req(stats, plan);
             const style = TIER_STYLES[medal.tier];
 
@@ -179,13 +178,14 @@ export const AchievementsTab: React.FC<AchievementsTabProps> = ({ user, plan, su
                 className="flex flex-col items-center group relative focus:outline-none"
               >
                 {/* 3D Medal Container - COIN STYLE - STRICTLY CIRCULAR */}
-                <div className={`relative w-20 h-20 rounded-full !rounded-full min-w-[5rem] min-h-[5rem] transition-all duration-500 ${isUnlocked ? `${style.glow} scale-100 hover:scale-105` : 'grayscale opacity-60 scale-95'}`}>
+                {/* !rounded-full and aspect-square are critical here */}
+                <div className={`relative w-20 h-20 aspect-square !rounded-full min-w-[5rem] min-h-[5rem] transition-all duration-500 ${isUnlocked ? `${style.glow} scale-100 hover:scale-105` : 'grayscale opacity-60 scale-95'}`}>
                    
                    {/* Metal Ring (Conic Gradient) */}
-                   <div className={`absolute inset-0 rounded-full ${style.ring}`}></div>
+                   <div className={`absolute inset-0 !rounded-full ${style.ring}`}></div>
                    
                    {/* Core (Radial Gradient) */}
-                   <div className={`absolute inset-[6px] rounded-full ${style.core} shadow-[inset_0_2px_4px_rgba(0,0,0,0.6)] flex items-center justify-center overflow-hidden`}>
+                   <div className={`absolute inset-[6px] !rounded-full ${style.core} shadow-[inset_0_2px_4px_rgba(0,0,0,0.6)] flex items-center justify-center overflow-hidden`}>
                         {/* High Relief Emoji */}
                         <span className="text-4xl filter drop-shadow-[0_2px_1px_rgba(0,0,0,0.5)] select-none transform group-hover:scale-110 transition-transform duration-300">
                             {medal.emoji}
@@ -197,7 +197,7 @@ export const AchievementsTab: React.FC<AchievementsTabProps> = ({ user, plan, su
 
                    {/* Locked Overlay */}
                    {!isUnlocked && (
-                       <div className="absolute inset-0 bg-black/50 rounded-full flex items-center justify-center backdrop-blur-[1px]">
+                       <div className="absolute inset-0 bg-black/50 !rounded-full flex items-center justify-center backdrop-blur-[1px]">
                            <Lock size={20} className="text-gray-400 drop-shadow-md" />
                        </div>
                    )}
@@ -221,15 +221,15 @@ export const AchievementsTab: React.FC<AchievementsTabProps> = ({ user, plan, su
              
              {/* Big Version of Medal */}
              <div className="flex justify-center mb-6 scale-125">
-                <div className={`relative w-24 h-24 rounded-full min-w-[6rem] min-h-[6rem] ${selectedMedal.isUnlocked ? TIER_STYLES[selectedMedal.tier].glow : 'grayscale opacity-80'}`}>
-                    <div className={`absolute inset-0 rounded-full ${TIER_STYLES[selectedMedal.tier].ring}`}></div>
-                    <div className={`absolute inset-[6px] rounded-full ${TIER_STYLES[selectedMedal.tier].core} shadow-[inset_0_2px_4px_rgba(0,0,0,0.6)] flex items-center justify-center`}>
+                <div className={`relative w-24 h-24 aspect-square !rounded-full min-w-[6rem] min-h-[6rem] ${selectedMedal.isUnlocked ? TIER_STYLES[selectedMedal.tier].glow : 'grayscale opacity-80'}`}>
+                    <div className={`absolute inset-0 !rounded-full ${TIER_STYLES[selectedMedal.tier].ring}`}></div>
+                    <div className={`absolute inset-[6px] !rounded-full ${TIER_STYLES[selectedMedal.tier].core} shadow-[inset_0_2px_4px_rgba(0,0,0,0.6)] flex items-center justify-center`}>
                         <span className="text-5xl filter drop-shadow-[0_4px_4px_rgba(0,0,0,0.8)]">
                             {selectedMedal.emoji}
                         </span>
                     </div>
                     {!selectedMedal.isUnlocked && (
-                       <div className="absolute inset-0 bg-black/40 rounded-full flex items-center justify-center">
+                       <div className="absolute inset-0 bg-black/40 !rounded-full flex items-center justify-center">
                            <Lock size={30} className="text-gray-300" />
                        </div>
                    )}

@@ -24,8 +24,8 @@ export const LessonItem: React.FC<LessonItemProps> = ({
     onOpenNote, 
     onOpenFlashcards, 
     onOpenStats,
-    onPlay,
-    onPause,
+    onPlay, 
+    onPause, 
     onStop
 }) => {
   const [isDeleting, setIsDeleting] = useState(false);

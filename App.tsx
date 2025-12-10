@@ -125,7 +125,7 @@ const App: React.FC = () => {
     loginUser(newUser);
   };
 
-  // --- FIX 1: USER DELETION LOGIC ---
+  // --- FIX 1: USER DELETION LOGIC (CRITICAL) ---
   const deleteUser = (id: string) => {
     // 1. Native Confirm
     if (!window.confirm('Tem certeza absoluta? Todos os dados desse usuário serão perdidos para sempre.')) return;
@@ -134,12 +134,14 @@ const App: React.FC = () => {
     const updatedUsers = users.filter(u => u.id !== id);
     setUsers(updatedUsers);
     
-    // 3. Persistent Storage Update
+    // 3. Persistent Storage Update - Immediate Sync
     localStorage.setItem(USERS_KEY, JSON.stringify(updatedUsers));
     localStorage.removeItem(`study-data-${id}`);
     
     // 4. Handle Logout if needed
-    if (currentUser?.id === id) logoutUser();
+    if (currentUser?.id === id) {
+        logoutUser();
+    }
   };
 
   // --- DATA PERSISTENCE ---
@@ -205,7 +207,7 @@ const App: React.FC = () => {
     setShowPlanMenu(false);
   };
 
-  // --- FIX 2: PLAN DELETION LOGIC ---
+  // --- FIX 2: PLAN DELETION LOGIC (CRITICAL) ---
   const deleteCurrentPlan = (e?: React.MouseEvent) => {
     if (e) {
         e.preventDefault();
@@ -214,6 +216,7 @@ const App: React.FC = () => {
     
     if (plans.length <= 1) return alert("Você precisa ter pelo menos um plano ativo.");
     
+    // NATIVE CONFIRMATION
     if (window.confirm(`Excluir plano "${getCurrentPlan()?.name}" permanentemente?`)) {
       const newPlans = plans.filter(p => p.id !== currentPlanId);
       const nextPlanId = newPlans[0].id;
