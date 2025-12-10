@@ -127,17 +127,19 @@ const App: React.FC = () => {
 
   // --- FIX 1: USER DELETION LOGIC ---
   const deleteUser = (id: string) => {
+    // 1. Native Confirm
     if (!window.confirm('Tem certeza absoluta? Todos os dados desse usuário serão perdidos para sempre.')) return;
     
-    // Immediate Update
+    // 2. State Update
     const updatedUsers = users.filter(u => u.id !== id);
     setUsers(updatedUsers);
+    
+    // 3. Persistent Storage Update
     localStorage.setItem(USERS_KEY, JSON.stringify(updatedUsers));
     localStorage.removeItem(`study-data-${id}`);
     
-    if (currentUser?.id === id) {
-        logoutUser();
-    }
+    // 4. Handle Logout if needed
+    if (currentUser?.id === id) logoutUser();
   };
 
   // --- DATA PERSISTENCE ---
@@ -204,14 +206,15 @@ const App: React.FC = () => {
   };
 
   // --- FIX 2: PLAN DELETION LOGIC ---
-  const deleteCurrentPlan = (e: React.MouseEvent) => {
-    e.preventDefault();
-    e.stopPropagation(); // CRITICAL: Prevents menu close before confirmation
-
+  const deleteCurrentPlan = (e?: React.MouseEvent) => {
+    if (e) {
+        e.preventDefault();
+        e.stopPropagation(); // Prevents menu from just closing without action
+    }
+    
     if (plans.length <= 1) return alert("Você precisa ter pelo menos um plano ativo.");
     
-    const planToDelete = getCurrentPlan();
-    if (window.confirm(`Excluir plano "${planToDelete?.name}" permanentemente?`)) {
+    if (window.confirm(`Excluir plano "${getCurrentPlan()?.name}" permanentemente?`)) {
       const newPlans = plans.filter(p => p.id !== currentPlanId);
       const nextPlanId = newPlans[0].id;
 
@@ -219,7 +222,7 @@ const App: React.FC = () => {
       setCurrentPlanId(nextPlanId);
       setShowPlanMenu(false);
       
-      // Force sync
+      // Force sync to storage immediately
       if (currentUser) {
           localStorage.setItem(`study-data-${currentUser.id}`, JSON.stringify({ 
               plans: newPlans, 
@@ -252,7 +255,7 @@ const App: React.FC = () => {
 
   // --- FIX 3: SUBJECT DELETION LOGIC ---
   const deleteSubject = (id: string) => {
-      // Confirmation handled in Component
+      // Logic handled in SubjectCard via isDeleting state, but this performs the data update
       updateCurrentPlan(plan => ({...plan, subjects: plan.subjects.filter(s => s.id !== id)}));
   };
   
@@ -271,7 +274,7 @@ const App: React.FC = () => {
   // --- FIX 4: LESSON DELETION LOGIC ---
   const deleteLesson = (sId: string, lId: string) => {
     if (activeSession?.lId === lId) return alert("Pare o timer antes de excluir.");
-    // Confirmation handled in Component
+    // Confirmation handled in LessonItem, this executes the removal
     updateCurrentPlan(plan => ({
       ...plan,
       subjects: plan.subjects.map(s => s.id === sId ? { ...s, lessons: s.lessons.filter(l => l.id !== lId) } : s)
