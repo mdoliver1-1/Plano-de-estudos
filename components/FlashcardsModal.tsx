@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { X, Plus, Trash2, RotateCw, ChevronLeft, ChevronRight, Layers, GraduationCap } from 'lucide-react';
 import { Flashcard } from '../types';
@@ -87,8 +88,8 @@ export const FlashcardsModal: React.FC<FlashcardsModalProps> = ({
               <h3 className="text-lg font-bold text-white truncate">{lessonTitle}</h3>
             </div>
           </div>
-          <button onClick={onClose} className="p-2 text-gray-500 hover:text-white hover:bg-gray-800 rounded-lg transition-colors">
-            <X size={24} />
+          <button onClick={onClose} className="bg-gray-800 text-gray-400 hover:text-white p-2 rounded-full transition-colors">
+            <X size={20} />
           </button>
         </div>
 

@@ -113,13 +113,6 @@ export const LessonItem: React.FC<LessonItemProps> = ({
                 {lesson.title}
                 </span>
                 
-                {isPlaying && (
-                    <div className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-green-500/20 text-green-500 text-[10px] font-bold uppercase tracking-wider border border-green-500/30 whitespace-nowrap">
-                        <span className="w-1.5 h-1.5 rounded-full bg-green-500 inline-block animate-pulse"></span>
-                        ESTUDANDO
-                    </div>
-                )}
-                
                 {isRevisionDue && !isPlaying && (
                     <div className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-yellow-500/20 text-yellow-500 text-[10px] font-bold uppercase tracking-wider border border-yellow-500/30 whitespace-nowrap">
                         <AlertTriangle size={10} />

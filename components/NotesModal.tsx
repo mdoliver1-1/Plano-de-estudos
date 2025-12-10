@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { X, Save, FileText } from 'lucide-react';
 
@@ -41,9 +42,9 @@ export const NotesModal: React.FC<NotesModalProps> = ({
           </div>
           <button 
             onClick={onClose} 
-            className="p-2 text-gray-500 hover:text-white hover:bg-gray-800 rounded-lg transition-colors"
+            className="bg-gray-800 text-gray-400 hover:text-white p-2 rounded-full transition-colors"
           >
-            <X size={24} />
+            <X size={20} />
           </button>
         </div>
         

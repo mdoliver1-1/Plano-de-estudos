@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect } from 'react';
-import { PlusCircle, GraduationCap, Settings, Check, Download, Upload, X, ChevronDown, Trash2, Layout, Plus, PieChart, LogOut, Trophy, HelpCircle, ChevronRight, Lock, Zap, Skull, Shield, Calendar } from 'lucide-react';
-import { Subject, Lesson, StudyPlan, Flashcard, UserProfile, LessonMetrics, ActiveSession, TimerSettings } from './types';
+import { PlusCircle, GraduationCap, Settings, Check, Download, Upload, X, ChevronDown, Trash2, Layout, Plus, PieChart, LogOut, Trophy, HelpCircle, ChevronRight, Lock, Briefcase } from 'lucide-react';
+import { Subject, StudyPlan, Flashcard, UserProfile, LessonMetrics, ActiveSession, CAREERS } from './types';
 import { SubjectCard } from './components/SubjectCard';
 import { Dashboard } from './components/Dashboard';
 import { Pomodoro } from './components/Pomodoro';
@@ -14,6 +14,7 @@ import { Analytics } from './components/Analytics';
 import { AchievementsTab } from './components/AchievementsTab';
 import { GuideModal } from './components/GuideModal';
 import { AmbiencePlayer } from './components/AmbiencePlayer';
+import { GodModePanel } from './components/GodModePanel';
 
 // KEYS
 const USERS_KEY = 'study-master-users';
@@ -21,16 +22,24 @@ const CURRENT_USER_ID_KEY = 'study-master-current-user-id';
 
 const DEFAULT_TIMER = { focus: 25, short: 5, long: 15 };
 
-// HELPER: Calculate Rank based on TOTAL XP
-const getRankInfo = (xp: number) => {
+// HELPER: Calculate Rank based on TOTAL XP and CAREER
+export const getRankInfo = (xp: number, careerId: string = 'fiscal') => {
     const level = Math.floor(Math.sqrt(xp) / 5) + 1;
+    const career = CAREERS[careerId] || CAREERS['fiscal'];
+    const titles = career.ranks;
     
-    if (level >= 100) return { name: 'VITALÍCIO', color: 'text-cyan-400', border: 'border-cyan-500/50', bg: 'bg-cyan-500/10', level };
-    if (level >= 75) return { name: 'NOMEADO', color: 'text-yellow-400', border: 'border-yellow-500/50', bg: 'bg-yellow-500/10', level };
-    if (level >= 50) return { name: 'ELITE', color: 'text-purple-400', border: 'border-purple-500/50', bg: 'bg-purple-500/10', level };
-    if (level >= 21) return { name: 'COMPETITIVO', color: 'text-blue-400', border: 'border-blue-500/50', bg: 'bg-blue-500/10', level };
-    if (level >= 6) return { name: 'ASPIRANTE', color: 'text-amber-500', border: 'border-amber-500/50', bg: 'bg-amber-500/10', level };
-    return { name: 'INICIANTE', color: 'text-gray-400', border: 'border-gray-600/50', bg: 'bg-gray-600/10', level };
+    let rankName = titles[0]; // Default
+    let color = 'text-gray-400';
+    let border = 'border-gray-600/50';
+    let bg = 'bg-gray-600/10';
+
+    if (level >= 100) { rankName = titles[5]; color = 'text-cyan-400'; border = 'border-cyan-500/50'; bg = 'bg-cyan-500/10'; }
+    else if (level >= 75) { rankName = titles[4]; color = 'text-yellow-400'; border = 'border-yellow-500/50'; bg = 'bg-yellow-500/10'; }
+    else if (level >= 50) { rankName = titles[3]; color = 'text-purple-400'; border = 'border-purple-500/50'; bg = 'bg-purple-500/10'; }
+    else if (level >= 21) { rankName = titles[2]; color = 'text-blue-400'; border = 'border-blue-500/50'; bg = 'bg-blue-500/10'; }
+    else if (level >= 6) { rankName = titles[1]; color = 'text-amber-500'; border = 'border-amber-500/50'; bg = 'bg-amber-500/10'; }
+
+    return { name: rankName, color, border, bg, level };
 };
 
 const App: React.FC = () => {
@@ -49,10 +58,8 @@ const App: React.FC = () => {
   const [showPlanMenu, setShowPlanMenu] = useState(false); 
   const [showNewPlanInput, setShowNewPlanInput] = useState(false);
   
-  // Developer Mode State
-  const [devModeUnlocked, setDevModeUnlocked] = useState(false);
-  const [showAdminLogin, setShowAdminLogin] = useState(false);
-  const [adminPassword, setAdminPassword] = useState('');
+  // GOD MODE STATE
+  const [showGodMode, setShowGodMode] = useState(false);
   
   // Inputs
   const [newSubjectName, setNewSubjectName] = useState('');
@@ -98,7 +105,7 @@ const App: React.FC = () => {
   const loginUser = (user: UserProfile) => {
     setCurrentUser(user);
     localStorage.setItem(CURRENT_USER_ID_KEY, user.id);
-    loadUserData(user.id);
+    loadUserData(user.id, user.careerId);
   };
 
   const logoutUser = () => {
@@ -107,11 +114,11 @@ const App: React.FC = () => {
     setPlans([]);
     setCurrentPlanId('');
     setActiveSession(null);
-    setDevModeUnlocked(false);
+    setShowSettings(false); 
   };
 
-  const createUser = (name: string, avatar: string) => {
-    const newUser: UserProfile = { id: generateId(), name, avatar, createdAt: Date.now() };
+  const createUser = (name: string, avatar: string, careerId: string) => {
+    const newUser: UserProfile = { id: generateId(), name, avatar, createdAt: Date.now(), careerId };
     const updatedUsers = [...users, newUser];
     setUsers(updatedUsers);
     localStorage.setItem(USERS_KEY, JSON.stringify(updatedUsers));
@@ -119,7 +126,7 @@ const App: React.FC = () => {
   };
 
   const deleteUser = (id: string) => {
-    if (confirm('Tem certeza? Todos os dados desse usuário serão perdidos.')) {
+    if (confirm('Tem certeza? Todos os dados desse usuário serão perdidos para sempre.')) {
       const updatedUsers = users.filter(u => u.id !== id);
       setUsers(updatedUsers);
       localStorage.setItem(USERS_KEY, JSON.stringify(updatedUsers));
@@ -129,18 +136,18 @@ const App: React.FC = () => {
   };
 
   // --- DATA PERSISTENCE ---
-  const loadUserData = (userId: string) => {
+  const loadUserData = (userId: string, careerId?: string) => {
     const dataKey = `study-data-${userId}`;
     const savedData = localStorage.getItem(dataKey);
     if (savedData) {
       try {
         const parsed = JSON.parse(savedData);
-        if (parsed.plans) {
+        if (parsed.plans && parsed.plans.length > 0) {
            setPlans(parsed.plans);
            setCurrentPlanId(parsed.currentPlanId || parsed.plans[0]?.id || '');
-        } else createDefaultPlan();
-      } catch (e) { createDefaultPlan(); }
-    } else createDefaultPlan();
+        } else createDefaultPlan(careerId);
+      } catch (e) { createDefaultPlan(careerId); }
+    } else createDefaultPlan(careerId);
   };
 
   useEffect(() => {
@@ -150,7 +157,7 @@ const App: React.FC = () => {
     }
   }, [plans, currentPlanId, currentUser]);
 
-  const createDefaultPlan = () => {
+  const createDefaultPlan = (careerId: string = 'fiscal') => {
     const defaultPlan: StudyPlan = {
       id: generateId(),
       name: 'Plano Principal',
@@ -160,44 +167,12 @@ const App: React.FC = () => {
       streak: 0,
       lastStudyDate: 0,
       inventory: { ice: 1 },
-      bonusXP: 0
+      bonusXP: 0,
+      forcedMedals: [],
+      careerId: careerId // Use career from profile or default
     };
     setPlans([defaultPlan]);
     setCurrentPlanId(defaultPlan.id);
-  };
-
-  // --- DEVELOPER MODE FUNCTIONS ---
-  const handleAdminSubmit = (e: React.FormEvent) => {
-      e.preventDefault();
-      if (adminPassword === "19101988") {
-          setDevModeUnlocked(true);
-          setShowAdminLogin(false);
-          setAdminPassword('');
-      } else {
-          alert("Senha Incorreta");
-          setAdminPassword('');
-      }
-  };
-
-  const debugAddXP = () => {
-      updateCurrentPlan(p => ({ ...p, bonusXP: (p.bonusXP || 0) + 1000 }));
-  };
-
-  const debugAddIce = () => {
-      updateCurrentPlan(p => ({ ...p, inventory: { ...p.inventory, ice: (p.inventory?.ice || 0) + 1 } }));
-  };
-
-  const debugSimulateDay = () => {
-      // Set last study date to 48 hours ago to guarantee streak break check
-      updateCurrentPlan(p => ({ ...p, lastStudyDate: Date.now() - (86400000 * 2) }));
-      alert("Data de estudo alterada para 2 dias atrás.\nEstude algo para testar a quebra ou uso de Gelo.");
-  };
-
-  const debugReset = () => {
-      if (confirm("⚠️ PERIGO: Isso apagará TODOS os dados deste plano e recarregará a página. Continuar?") && confirm("Tem certeza absoluta?")) {
-         localStorage.clear();
-         window.location.reload();
-      }
   };
 
   // --- ACTIONS ---
@@ -212,7 +187,9 @@ const App: React.FC = () => {
       createdAt: Date.now(),
       streak: 0,
       lastStudyDate: 0,
-      inventory: { ice: 1 }
+      inventory: { ice: 1 },
+      forcedMedals: [],
+      careerId: currentUser?.careerId || 'fiscal' // Inherit user career
     };
     setPlans(prev => [...prev, newPlan]);
     setCurrentPlanId(newPlan.id);
@@ -228,6 +205,10 @@ const App: React.FC = () => {
       setPlans(newPlans);
       setCurrentPlanId(newPlans[0].id);
       setShowPlanMenu(false);
+      // Force sync to storage immediately
+      if (currentUser) {
+          localStorage.setItem(`study-data-${currentUser.id}`, JSON.stringify({ plans: newPlans, currentPlanId: newPlans[0].id }));
+      }
     }
   };
 
@@ -235,6 +216,12 @@ const App: React.FC = () => {
     setPlans(prev => prev.map(p => p.id === currentPlanId ? updater(p) : p));
   };
 
+  // --- GOD MODE HANDLER ---
+  const handleGodModeUpdate = (updatedPlan: StudyPlan) => {
+    setPlans(prev => prev.map(p => p.id === updatedPlan.id ? updatedPlan : p));
+  };
+
+  // --- SUBJECT/LESSON ACTIONS ---
   const addSubject = (e: React.FormEvent) => {
     e.preventDefault();
     if (!newSubjectName.trim()) return;
@@ -273,11 +260,26 @@ const App: React.FC = () => {
     const l = plan?.subjects.find(s => s.id === sId)?.lessons.find(l => l.id === lId);
     if (!l) return;
 
+    const isRevisionDue = l.completed && l.revisionDate && new Date(l.revisionDate) <= new Date();
+
     if (!l.completed) {
       setPendingLesson({ sId, lId });
       setRevisionModalOpen(true);
+    } else if (isRevisionDue) {
+      let nextDate = null;
+      let nextQueue = l.revisionQueue ? [...l.revisionQueue] : [];
+
+      if (nextQueue.length > 0) {
+        nextQueue.sort((a, b) => a - b);
+        nextDate = new Date(nextQueue[0]).toISOString();
+        nextQueue = nextQueue.slice(1);
+      }
+
+      updateLessonStatus(sId, lId, true, nextDate, nextQueue);
     } else {
-      updateLessonStatus(sId, lId, false, null, []);
+      if (confirm('Desmarcar aula? O histórico de revisões futuras será perdido.')) {
+        updateLessonStatus(sId, lId, false, null, []);
+      }
     }
   };
 
@@ -310,31 +312,16 @@ const App: React.FC = () => {
   };
 
   // --- REVISION CYCLE LOGIC ---
-  const handleRevisionSelect = (type: string | null, customDate?: string) => {
-    if (pendingLesson) {
-      let revisionDate = null;
-      let revisionQueue: number[] = [];
-      const now = new Date();
-
-      if (type === 'custom' && customDate) {
-          revisionDate = new Date(customDate).toISOString();
-      } else if (type === 'cycle') {
-          // Schedule 1, 7, 30
-          const d1 = new Date(now); d1.setDate(d1.getDate() + 1);
-          const d7 = new Date(now); d7.setDate(d7.getDate() + 7);
-          const d30 = new Date(now); d30.setDate(d30.getDate() + 30);
-          
-          revisionDate = d1.toISOString();
-          revisionQueue = [d7.getTime(), d30.getTime()];
-      } else if (type) {
-          const days = parseInt(type);
-          const date = new Date(now);
-          date.setDate(date.getDate() + days);
-          revisionDate = date.toISOString();
-      }
-
-      updateLessonStatus(pendingLesson.sId, pendingLesson.lId, true, revisionDate, revisionQueue);
+  const handleScheduleRevisions = (dates: number[]) => {
+    if (!pendingLesson) return;
+    let revisionDate = null;
+    let revisionQueue: number[] = [];
+    if (dates.length > 0) {
+        const sorted = dates.sort((a, b) => a - b);
+        revisionDate = new Date(sorted[0]).toISOString();
+        revisionQueue = sorted.slice(1);
     }
+    updateLessonStatus(pendingLesson.sId, pendingLesson.lId, true, revisionDate, revisionQueue);
     setRevisionModalOpen(false);
     setPendingLesson(null);
   };
@@ -381,7 +368,7 @@ const App: React.FC = () => {
       setActiveSession(null);
   };
 
-  // Wrappers for modals
+  // Wrappers
   const openNoteModal = (sId: string, lId: string) => {
     const l = getCurrentPlan()?.subjects.find(s => s.id === sId)?.lessons.find(l => l.id === lId);
     if (l) { setCurrentNote({ sId, lId, title: l.title, content: l.notes || '' }); setNotesModalOpen(true); }
@@ -432,7 +419,7 @@ const App: React.FC = () => {
   const allLessons = currentPlan.subjects.flatMap(s => s.lessons);
   const completedLessonsCount = allLessons.filter(l => l.completed).length;
   
-  // XP Calculation (Unified)
+  // XP Calculation
   let calculatedXP = 0;
   currentPlan.subjects.forEach(s => s.lessons.forEach(l => {
      if(l.metrics) {
@@ -441,7 +428,7 @@ const App: React.FC = () => {
   }));
   const totalXP = calculatedXP + (currentPlan.bonusXP || 0);
 
-  const rank = getRankInfo(totalXP);
+  const rank = getRankInfo(totalXP, currentPlan.careerId);
 
   return (
     <div className="min-h-screen bg-[#121212] text-gray-200 font-sans pb-40">
@@ -453,21 +440,23 @@ const App: React.FC = () => {
             
             {/* Left: Identity */}
             <div className="flex items-center gap-3">
-              <div className="w-12 h-12 rounded-full bg-gradient-to-br from-gray-800 to-gray-900 border-2 border-gray-700 flex items-center justify-center text-2xl shadow-lg">
+              <div className="w-12 h-12 rounded-full bg-gradient-to-br from-gray-800 to-gray-900 border-2 border-gray-700 flex items-center justify-center text-2xl shadow-lg relative overflow-hidden">
                 {currentUser.avatar}
               </div>
-              <div className="flex flex-col relative group">
-                <h1 className="text-lg font-bold text-white leading-tight">{currentUser.name}</h1>
+              <div className="flex flex-col relative group min-w-0">
+                <h1 className="text-lg font-bold text-white leading-tight truncate">{currentUser.name}</h1>
                 <div 
                     onClick={() => setShowPlanMenu(!showPlanMenu)}
                     className="flex items-center gap-1 text-xs text-gray-400 hover:text-green-400 cursor-pointer transition-colors relative"
                 >
-                    <span className="truncate max-w-[150px]">{currentPlan.name}</span>
+                    <span className="truncate max-w-[140px]">{currentPlan.name}</span>
                     <ChevronDown size={10} />
                 </div>
                 
-                {/* FLOATING PLAN MENU (Correctly Positioned) */}
+                {/* FLOATING PLAN MENU */}
                 {showPlanMenu && (
+                    <>
+                    <div className="fixed inset-0 z-40 bg-transparent" onClick={() => setShowPlanMenu(false)}></div>
                     <div className="absolute top-full left-0 mt-2 w-64 bg-[#1e1e1e] border border-gray-700 rounded-xl shadow-2xl z-50 overflow-hidden animate-in fade-in zoom-in-95">
                         <div className="max-h-60 overflow-y-auto">
                             {plans.map(p => (
@@ -479,17 +468,20 @@ const App: React.FC = () => {
                         </div>
                         <div className="border-t border-gray-700 p-2 bg-[#1a1a1a]">
                             <button onClick={() => { setShowNewPlanInput(true); setShowPlanMenu(false); }} className="w-full flex items-center gap-2 px-3 py-2 text-sm text-gray-300 hover:bg-gray-800 rounded-lg"><Plus size={16} /> Novo Plano</button>
-                            <button onClick={deleteCurrentPlan} className="w-full flex items-center gap-2 px-3 py-2 text-sm text-red-400 hover:bg-red-900/20 rounded-lg mt-1"><Trash2 size={16} /> Excluir</button>
+                            <button onClick={deleteCurrentPlan} className="w-full flex items-center gap-2 px-3 py-2 text-sm text-red-400 hover:bg-red-900/20 rounded-lg mt-1 mb-1"><Trash2 size={16} /> Excluir</button>
+                            <div className="w-full h-px bg-gray-700 my-1"></div>
+                            <button onClick={logoutUser} className="w-full flex items-center gap-2 px-3 py-2 text-sm bg-red-900/10 text-red-400 hover:bg-red-900/20 rounded-lg font-bold"><LogOut size={16} /> Sair / Trocar</button>
                         </div>
                     </div>
+                    </>
                 )}
               </div>
             </div>
 
-            {/* Right: Rank Tag (Glassmorphism) */}
+            {/* Right: Rank Tag */}
             <div className={`flex flex-col items-end`}>
                  <div className={`px-3 py-1 rounded-full border ${rank.border} ${rank.bg} backdrop-blur-sm shadow-[0_0_15px_rgba(0,0,0,0.2)] flex items-center gap-2 mb-1`}>
-                    <span className={`text-[10px] font-bold tracking-widest ${rank.color} uppercase`}>{rank.name}</span>
+                    <span className={`text-[10px] font-bold tracking-widest ${rank.color} uppercase truncate max-w-[100px]`}>{rank.name}</span>
                  </div>
                  <span className="text-[10px] text-gray-500 font-mono tracking-wider">NÍVEL {rank.level}</span>
             </div>
@@ -520,7 +512,10 @@ const App: React.FC = () => {
                 <button onClick={() => setShowAddSubject(!showAddSubject)} className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-all ${showAddSubject ? 'bg-gray-800 text-white' : 'bg-green-600 hover:bg-green-500 text-white shadow-lg'}`}>
                     <PlusCircle size={16} /> Disciplina
                 </button>
-                <button onClick={() => setShowSettings(true)} className="p-2 text-gray-400 hover:text-white bg-gray-900 hover:bg-gray-800 rounded-lg border border-gray-800"><Settings size={18} /></button>
+                <div className="w-px bg-gray-800 mx-1"></div>
+                <button onClick={() => setShowSettings(true)} className="p-2 text-gray-400 hover:text-white bg-gray-900 hover:bg-gray-800 rounded-lg border border-gray-800 transition-colors">
+                    <Settings size={18} />
+                </button>
             </div>
 
             {/* Add Subject Input */}
@@ -569,17 +564,28 @@ const App: React.FC = () => {
       <AmbiencePlayer />
 
       {/* MODALS */}
-      <RevisionModal isOpen={revisionModalOpen} onClose={() => setRevisionModalOpen(false)} onSelect={handleRevisionSelect} />
+      <RevisionModal isOpen={revisionModalOpen} onClose={() => setRevisionModalOpen(false)} onConfirm={handleScheduleRevisions} />
       {currentNote && <NotesModal isOpen={notesModalOpen} lessonTitle={currentNote.title} initialContent={currentNote.content} onClose={() => setNotesModalOpen(false)} onSave={saveNote} />}
       {currentFlashcardLesson && <FlashcardsModal isOpen={flashcardsModalOpen} lessonTitle={currentFlashcardLesson.title} flashcards={currentFlashcardLesson.cards} onClose={() => setFlashcardsModalOpen(false)} onAddCard={addFlashcard} onDeleteCard={deleteFlashcard} />}
       {currentStatsLesson && <LessonStatsModal isOpen={statsModalOpen} lessonTitle={currentStatsLesson.title} initialMetrics={currentStatsLesson.metrics} onClose={() => setStatsModalOpen(false)} onSave={saveStats} />}
       <GuideModal isOpen={guideModalOpen} onClose={() => setGuideModalOpen(false)} />
+      
+      {/* GOD MODE PANEL (NEW) */}
+      <GodModePanel 
+        isOpen={showGodMode} 
+        currentPlan={currentPlan} 
+        onClose={() => setShowGodMode(false)}
+        onUpdatePlan={handleGodModeUpdate} 
+      />
 
       {/* New Plan Modal */}
       {showNewPlanInput && (
         <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
           <div className="bg-[#1e1e1e] border border-gray-700 w-full max-w-sm rounded-2xl p-6">
-             <h2 className="text-white font-bold mb-4">Novo Plano</h2>
+             <div className="flex justify-between items-center mb-4">
+                 <h2 className="text-white font-bold">Novo Plano</h2>
+                 <button onClick={() => setShowNewPlanInput(false)} className="p-1 rounded-full bg-gray-800 text-gray-400 hover:text-white"><X size={16}/></button>
+             </div>
              <form onSubmit={createPlan}>
                <input type="text" value={newPlanName} onChange={e => setNewPlanName(e.target.value)} placeholder="Nome..." className="w-full bg-[#252525] text-white p-3 rounded-lg border border-gray-700 outline-none mb-4" autoFocus />
                <div className="flex gap-2"><button type="button" onClick={() => setShowNewPlanInput(false)} className="flex-1 py-2 bg-gray-800 rounded-lg text-gray-400">Cancelar</button><button type="submit" className="flex-1 py-2 bg-green-600 text-white rounded-lg">Criar</button></div>
@@ -588,39 +594,33 @@ const App: React.FC = () => {
         </div>
       )}
 
-      {/* Admin Login Modal (Secure) */}
-      {showAdminLogin && (
-          <div className="fixed inset-0 bg-black/90 backdrop-blur-sm z-[110] flex items-center justify-center p-4">
-              <div className="bg-[#1e1e1e] border border-gray-700 w-full max-w-xs rounded-2xl p-6 shadow-2xl animate-in fade-in zoom-in-95">
-                  <div className="flex items-center gap-2 mb-4 text-red-500 justify-center">
-                      <Lock size={24} />
-                      <h3 className="font-bold text-white">Acesso Restrito</h3>
-                  </div>
-                  <form onSubmit={handleAdminSubmit}>
-                      <input 
-                          type="password" 
-                          inputMode="numeric"
-                          value={adminPassword}
-                          onChange={(e) => setAdminPassword(e.target.value)}
-                          placeholder="Senha numérica"
-                          className="w-full bg-[#252525] text-white text-center p-3 rounded-lg border border-gray-700 focus:border-red-500 outline-none mb-4 tracking-widest text-lg"
-                          autoFocus
-                      />
-                      <div className="flex gap-2">
-                        <button type="button" onClick={() => { setShowAdminLogin(false); setAdminPassword(''); }} className="flex-1 py-2 bg-gray-800 text-gray-400 rounded-lg">Cancelar</button>
-                        <button type="submit" className="flex-1 py-2 bg-red-600 text-white font-bold rounded-lg">Entrar</button>
-                      </div>
-                  </form>
-              </div>
-          </div>
-      )}
-
       {/* Settings Modal */}
       {showSettings && (
-        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-[100] flex items-center justify-center p-4">
-          <div className="bg-[#1e1e1e] border border-gray-700 w-full max-w-md rounded-2xl p-6 shadow-2xl overflow-y-auto max-h-[90vh]">
-            <div className="flex justify-between items-center mb-6"><h2 className="text-xl font-bold text-white flex items-center gap-2"><Settings size={20} /> Configurações</h2><button onClick={() => setShowSettings(false)} className="text-gray-500 hover:text-white"><X size={24} /></button></div>
-            <div className="space-y-4">
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-[100] flex items-center justify-center p-4" onClick={(e) => e.target === e.currentTarget && setShowSettings(false)}>
+          <div className="bg-[#1e1e1e] border border-gray-700 w-full max-w-md rounded-2xl p-6 shadow-2xl overflow-y-auto max-h-[90vh] flex flex-col animate-in fade-in zoom-in-95">
+            <div className="flex justify-between items-center mb-6"><h2 className="text-xl font-bold text-white flex items-center gap-2"><Settings size={20} /> Configurações</h2><button onClick={() => setShowSettings(false)} className="text-gray-500 hover:text-white p-2 rounded-full hover:bg-red-900/30 transition-all"><X size={20} /></button></div>
+            <div className="space-y-4 flex-1">
+              
+              {/* CAREER SELECTION */}
+              <div className="p-4 bg-[#252525] rounded-xl border border-gray-700">
+                  <h3 className="font-bold text-gray-300 mb-2 flex items-center gap-2"><Briefcase size={16}/> Escolha sua Carreira</h3>
+                  <div className="relative">
+                      <select 
+                          value={currentPlan.careerId || 'fiscal'}
+                          onChange={(e) => updateCurrentPlan(p => ({ ...p, careerId: e.target.value }))}
+                          className="w-full appearance-none bg-[#1a1a1a] text-white border border-gray-600 rounded-lg p-3 text-sm focus:border-green-500 outline-none font-bold"
+                      >
+                          {Object.entries(CAREERS).map(([key, data]) => (
+                              <option key={key} value={key}>{data.label}</option>
+                          ))}
+                      </select>
+                      <ChevronDown size={16} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 pointer-events-none" />
+                  </div>
+                  <p className="text-[10px] text-gray-500 mt-2 leading-tight">
+                      Isso altera os nomes das patentes no seu perfil e nas conquistas (Nível 1 ao 100+).
+                  </p>
+              </div>
+
               <button onClick={() => { setGuideModalOpen(true); setShowSettings(false); }} className="w-full p-4 bg-blue-900/20 hover:bg-blue-900/30 border border-blue-900/50 rounded-xl flex items-center justify-between group transition-all">
                 <div className="flex items-center gap-3">
                   <div className="bg-blue-500 p-2 rounded-lg text-white"><HelpCircle size={20}/></div>
@@ -631,34 +631,15 @@ const App: React.FC = () => {
               <div className="p-4 bg-[#252525] rounded-xl border border-gray-700"><h3 className="font-bold text-gray-300 mb-2 flex items-center gap-2"><Download size={16}/> Exportar Dados</h3><button onClick={exportData} className="w-full py-2 bg-gray-800 hover:bg-gray-700 text-white rounded-lg text-sm font-medium">Copiar JSON</button></div>
               <div className="p-4 bg-[#252525] rounded-xl border border-gray-700"><h3 className="font-bold text-gray-300 mb-2 flex items-center gap-2"><Upload size={16}/> Restaurar Dados</h3><textarea value={importText} onChange={e => setImportText(e.target.value)} placeholder="Cole JSON aqui..." className="w-full h-24 bg-gray-900 border border-gray-800 rounded-lg p-3 text-xs text-gray-300 mb-3 font-mono"/><button onClick={importData} disabled={!importText} className="w-full py-2 bg-green-600 hover:bg-green-500 disabled:opacity-50 text-white rounded-lg text-sm font-medium">Restaurar</button></div>
               
-              <button onClick={logoutUser} className="w-full py-3 bg-red-900/20 hover:bg-red-900/30 text-red-400 border border-red-900/30 rounded-xl font-bold">Sair do Perfil</button>
               
-              {/* --- DANGER ZONE (DEVELOPER) --- */}
-              <div className="mt-6 pt-6 border-t border-gray-800">
-                  <h3 className="text-xs font-bold text-gray-500 uppercase tracking-widest mb-3">Zona de Perigo</h3>
-                  {!devModeUnlocked ? (
-                      <button 
-                        onClick={() => setShowAdminLogin(true)}
-                        className="w-full py-4 bg-gray-800 hover:bg-gray-700 text-gray-400 hover:text-white border border-gray-700 rounded-xl font-bold flex items-center justify-center gap-2 transition-all"
-                      >
-                          <Lock size={18} /> 🔒 ABRIR ÁREA ADM
-                      </button>
-                  ) : (
-                      <div className="grid grid-cols-2 gap-2 animate-in fade-in slide-in-from-top-2">
-                          <button onClick={debugAddXP} className="p-3 bg-purple-900/30 hover:bg-purple-900/50 text-purple-400 border border-purple-900/50 rounded-lg text-xs font-bold flex flex-col items-center gap-1">
-                              <Zap size={16} /> +1000 XP
-                          </button>
-                          <button onClick={debugAddIce} className="p-3 bg-cyan-900/30 hover:bg-cyan-900/50 text-cyan-400 border border-cyan-900/50 rounded-lg text-xs font-bold flex flex-col items-center gap-1">
-                              <Shield size={16} /> +1 Gelo
-                          </button>
-                          <button onClick={debugSimulateDay} className="p-3 bg-orange-900/30 hover:bg-orange-900/50 text-orange-400 border border-orange-900/50 rounded-lg text-xs font-bold flex flex-col items-center gap-1">
-                              <Calendar size={16} /> Simular Dia
-                          </button>
-                          <button onClick={debugReset} className="p-3 bg-red-900/30 hover:bg-red-900/50 text-red-400 border border-red-900/50 rounded-lg text-xs font-bold flex flex-col items-center gap-1">
-                              <Skull size={16} /> Reset Total
-                          </button>
-                      </div>
-                  )}
+              {/* --- GOD MODE BUTTON --- */}
+              <div className="mt-8 pt-4 border-t border-gray-800">
+                  <button 
+                    onClick={() => { setShowSettings(false); setShowGodMode(true); }}
+                    className="w-full py-4 bg-red-900/10 hover:bg-red-900/30 text-red-600 hover:text-red-400 border border-red-900/30 rounded-xl font-bold flex items-center justify-center gap-2 transition-all uppercase tracking-widest text-xs"
+                  >
+                      <Lock size={14} /> ACESSO ROOT / GOD MODE
+                  </button>
               </div>
             </div>
           </div>

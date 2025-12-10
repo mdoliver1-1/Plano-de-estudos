@@ -2,8 +2,9 @@
 export interface UserProfile {
   id: string;
   name: string;
-  avatar: string; // Emoji or Initials
+  avatar: string;
   createdAt: number;
+  careerId?: string; // New field for persistence
 }
 
 export interface Flashcard {
@@ -24,11 +25,11 @@ export interface Lesson {
   title: string;
   completed: boolean;
   revisionDate?: string | null;
-  revisionQueue?: number[]; // Array of timestamps for future revisions (Cycle logic)
+  revisionQueue?: number[]; 
   notes?: string;
-  materialLink?: string; // Optional URL for study material
+  materialLink?: string;
   flashcards?: Flashcard[];
-  metrics?: LessonMetrics; // New: Performance data
+  metrics?: LessonMetrics; 
 }
 
 export interface Subject {
@@ -45,7 +46,7 @@ export interface TimerSettings {
 }
 
 export interface Inventory {
-  ice: number; // Freeze streak item
+  ice: number; 
 }
 
 export interface StudyPlan {
@@ -56,15 +57,29 @@ export interface StudyPlan {
   createdAt: number;
   streak?: number;
   lastStudyDate?: number;
-  inventory?: Inventory; // Gamification items
-  bonusXP?: number; // Added for Developer Mode / Special Events
+  inventory?: Inventory;
+  bonusXP?: number;
+  forcedMedals?: string[];
+  careerId?: string; 
 }
 
 export interface ActiveSession {
   sId: string;
   lId: string;
   title: string;
-  startTime: number; // Timestamp de quando começou (ou retomou)
-  accumulatedTime: number; // Tempo acumulado em ms antes da última pausa
+  startTime: number;
+  accumulatedTime: number; 
   isPaused: boolean;
 }
+
+// --- GLOBAL CONSTANTS ---
+export const CAREERS: Record<string, { label: string, ranks: string[] }> = {
+  fiscal: { label: "🦁 Área Fiscal", ranks: ["Concurseiro", "Analista", "Auditor Jr.", "Auditor Fiscal", "Superintendente", "Auditor-Geral"] },
+  policial: { label: "👮 Segurança Pública", ranks: ["Cadete", "Operacional", "Agente Especial", "Comissário", "Superintendente", "Diretor-Geral"] },
+  saude: { label: "🏥 Área Saúde", ranks: ["Acadêmico", "Interno", "Residente", "Especialista", "Titular", "Diretor Clínico"] },
+  juridica: { label: "⚖️ Área Jurídica", ranks: ["Estagiário", "Bacharel", "Advogado", "Juiz", "Desembargador", "Ministro"] },
+  bancaria: { label: "🏦 Bancária & Gestão", ranks: ["Estagiário", "Escriturário", "Gerente", "Superintendente", "Diretor", "Presidente"] },
+  ti: { label: "💻 Tecnologia (TI)", ranks: ["Junior", "Pleno", "Senior", "Tech Lead", "Arquiteto", "CTO"] },
+  diplomacia: { label: "🌍 Diplomacia", ranks: ["Candidato", "3º Secretário", "2º Secretário", "Conselheiro", "Embaixador", "Chanceler"] },
+  vestibular: { label: "🎓 Vestibular/ENEM", ranks: ["Treineiro", "Vestibulando", "Candidato", "Competitivo", "Gabaritador", "Universitário"] },
+};

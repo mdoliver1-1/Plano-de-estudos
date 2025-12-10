@@ -21,8 +21,8 @@ export const GuideModal: React.FC<GuideModalProps> = ({ isOpen, onClose }) => {
             </div>
             <h3 className="text-xl font-bold text-white">Manual do Usuário</h3>
           </div>
-          <button onClick={onClose} className="p-2 text-gray-500 hover:text-white hover:bg-gray-800 rounded-lg transition-colors">
-            <X size={24} />
+          <button onClick={onClose} className="bg-gray-800 text-gray-400 hover:text-white p-2 rounded-full transition-colors">
+            <X size={20} />
           </button>
         </div>
 

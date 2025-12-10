@@ -1,11 +1,12 @@
+
 import React, { useState } from 'react';
-import { User, Plus, Trash2, ArrowRight } from 'lucide-react';
-import { UserProfile } from '../types';
+import { User, Plus, Trash2, Briefcase } from 'lucide-react';
+import { UserProfile, CAREERS } from '../types';
 
 interface LoginScreenProps {
   users: UserProfile[];
   onSelectUser: (user: UserProfile) => void;
-  onCreateUser: (name: string, avatar: string) => void;
+  onCreateUser: (name: string, avatar: string, careerId: string) => void;
   onDeleteUser: (id: string) => void;
 }
 
@@ -15,11 +16,12 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ users, onSelectUser, o
   const [isCreating, setIsCreating] = useState(false);
   const [newName, setNewName] = useState('');
   const [selectedAvatar, setSelectedAvatar] = useState(AVATARS[0]);
+  const [selectedCareer, setSelectedCareer] = useState('fiscal');
 
   const handleCreate = (e: React.FormEvent) => {
     e.preventDefault();
     if (newName.trim()) {
-      onCreateUser(newName.trim(), selectedAvatar);
+      onCreateUser(newName.trim(), selectedAvatar, selectedCareer);
       setNewName('');
       setIsCreating(false);
     }
@@ -37,9 +39,11 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ users, onSelectUser, o
         </div>
 
         {isCreating ? (
-          <div className="bg-[#1e1e1e] border border-gray-700 rounded-2xl p-6 animate-in fade-in zoom-in-95">
-            <h3 className="text-white font-bold mb-4">Novo Perfil</h3>
+          <div className="bg-[#1e1e1e] border border-gray-700 rounded-2xl p-6 animate-in fade-in zoom-in-95 shadow-2xl">
+            <h3 className="text-white font-bold mb-4 text-lg">Novo Perfil</h3>
             <form onSubmit={handleCreate}>
+              
+              {/* Avatar Selection */}
               <div className="mb-4">
                 <label className="text-xs text-gray-500 uppercase font-bold block mb-2">Avatar</label>
                 <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-thin">
@@ -55,28 +59,52 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ users, onSelectUser, o
                   ))}
                 </div>
               </div>
-              <input 
-                type="text" 
-                value={newName}
-                onChange={e => setNewName(e.target.value)}
-                placeholder="Seu nome..."
-                className="w-full bg-[#252525] text-white p-3 rounded-xl border border-gray-700 focus:border-green-500 outline-none mb-4"
-                autoFocus
-              />
+
+              {/* Name Input */}
+              <div className="mb-4">
+                <label className="text-xs text-gray-500 uppercase font-bold block mb-2">Nome</label>
+                <input 
+                  type="text" 
+                  value={newName}
+                  onChange={e => setNewName(e.target.value)}
+                  placeholder="Seu nome..."
+                  className="w-full bg-[#252525] text-white p-3 rounded-xl border border-gray-700 focus:border-green-500 outline-none transition-colors"
+                  autoFocus
+                />
+              </div>
+
+              {/* Career Selection */}
+              <div className="mb-6">
+                 <label className="text-xs text-gray-500 uppercase font-bold block mb-2">Área de Estudos</label>
+                 <div className="relative">
+                    <select 
+                        value={selectedCareer}
+                        onChange={(e) => setSelectedCareer(e.target.value)}
+                        className="w-full bg-[#252525] text-white p-3 rounded-xl border border-gray-700 focus:border-green-500 outline-none appearance-none font-medium"
+                    >
+                        {Object.entries(CAREERS).map(([key, data]) => (
+                            <option key={key} value={key}>{data.label}</option>
+                        ))}
+                    </select>
+                    <Briefcase size={16} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
+                 </div>
+                 <p className="text-[10px] text-gray-500 mt-2">Isso define as patentes da sua jornada (Ex: Nível 100 = {CAREERS[selectedCareer].ranks[5]}).</p>
+              </div>
+
               <div className="flex gap-3">
                 <button 
                   type="button" 
                   onClick={() => setIsCreating(false)} 
-                  className="flex-1 py-3 text-gray-400 font-medium hover:text-white"
+                  className="flex-1 py-3 text-gray-400 font-medium hover:text-white transition-colors"
                 >
                   Cancelar
                 </button>
                 <button 
                   type="submit" 
                   disabled={!newName.trim()}
-                  className="flex-1 py-3 bg-green-600 hover:bg-green-500 disabled:opacity-50 text-white font-bold rounded-xl"
+                  className="flex-1 py-3 bg-green-600 hover:bg-green-500 disabled:opacity-50 text-white font-bold rounded-xl transition-all shadow-lg shadow-green-900/20"
                 >
-                  Criar
+                  Criar Perfil
                 </button>
               </div>
             </form>
@@ -89,12 +117,18 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ users, onSelectUser, o
                   onClick={() => onSelectUser(user)}
                   className="w-full bg-[#1e1e1e] hover:bg-[#252525] border border-gray-800 hover:border-green-500/50 p-6 rounded-2xl flex flex-col items-center transition-all group-hover:-translate-y-1 shadow-lg"
                 >
-                  <span className="text-4xl mb-3">{user.avatar}</span>
+                  <span className="text-4xl mb-3 filter drop-shadow-md">{user.avatar}</span>
                   <span className="text-white font-bold truncate max-w-full">{user.name}</span>
+                  <span className="text-[10px] text-gray-500 mt-1 uppercase tracking-wider">
+                      {CAREERS[user.careerId || 'fiscal']?.ranks[0] || 'Concurseiro'}
+                  </span>
                 </button>
                 <button 
-                  onClick={(e) => { e.stopPropagation(); onDeleteUser(user.id); }}
-                  className="absolute top-2 right-2 p-1.5 text-gray-600 hover:text-red-400 opacity-0 group-hover:opacity-100 transition-opacity"
+                  onClick={(e) => { 
+                      e.stopPropagation(); // Critical fix: prevents login when clicking delete
+                      onDeleteUser(user.id); 
+                  }}
+                  className="absolute top-2 right-2 p-2 text-gray-600 hover:text-red-400 opacity-0 group-hover:opacity-100 transition-opacity bg-[#1e1e1e]/80 rounded-full"
                   title="Excluir Usuário"
                 >
                   <Trash2 size={14} />

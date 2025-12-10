@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { X, Save, Clock, HelpCircle, CheckCircle } from 'lucide-react';
 import { LessonMetrics } from '../types';
@@ -86,8 +87,8 @@ export const LessonStatsModal: React.FC<LessonStatsModalProps> = ({
         
         <div className="flex items-center justify-between mb-6">
           <h3 className="text-lg font-bold text-white truncate pr-4">{lessonTitle}</h3>
-          <button onClick={onClose} className="text-gray-500 hover:text-white">
-            <X size={24} />
+          <button onClick={onClose} className="bg-gray-800 text-gray-400 hover:text-white p-2 rounded-full transition-colors">
+            <X size={20} />
           </button>
         </div>
 

@@ -2,6 +2,7 @@
 import React, { useState } from 'react';
 import { Trophy, Lock, Shield, Flame, X } from 'lucide-react';
 import { UserProfile, StudyPlan, Subject } from '../types';
+import { getRankInfo } from '../App';
 
 interface AchievementsTabProps {
   user: UserProfile;
@@ -9,7 +10,6 @@ interface AchievementsTabProps {
   subjects: Subject[];
 }
 
-// --- GAMIFICATION LOGIC HELPER ---
 const calculateStats = (subjects: Subject[], bonusXP: number = 0) => {
   let totalTime = 0;
   let totalQ = 0;
@@ -29,27 +29,16 @@ const calculateStats = (subjects: Subject[], bonusXP: number = 0) => {
     });
   });
 
-  // XP Formula: (Time * 1) + (Questions * 20) + (Correct * 30) + Bonus
   const calculatedXP = Math.floor((totalTime * 1) + (totalQ * 20) + (correctQ * 30));
   const xp = calculatedXP + bonusXP;
   
-  const level = Math.floor(Math.sqrt(xp) / 5) + 1; // Quadratic curve
-  const progressToNext = Math.floor((Math.sqrt(xp) % 5) * 20); // rough approximation for bar
+  const level = Math.floor(Math.sqrt(xp) / 5) + 1; 
+  const progressToNext = Math.floor((Math.sqrt(xp) % 5) * 20); 
 
   return { xp, level, progressToNext, totalTime, totalQ, correctQ, totalLessons, completedLessons };
 };
 
-const getRank = (level: number) => {
-  if (level >= 100) return { name: 'LENDA', color: 'text-cyan-400', bg: 'bg-cyan-500', border: 'border-cyan-500' };
-  if (level >= 75) return { name: 'MESTRE', color: 'text-yellow-400', bg: 'bg-yellow-500', border: 'border-yellow-500' };
-  if (level >= 50) return { name: 'ESPECIALISTA', color: 'text-purple-400', bg: 'bg-purple-500', border: 'border-purple-500' };
-  if (level >= 21) return { name: 'ESTUDIOSO', color: 'text-blue-400', bg: 'bg-blue-500', border: 'border-blue-500' };
-  if (level >= 6) return { name: 'APRENDIZ', color: 'text-amber-500', bg: 'bg-amber-600', border: 'border-amber-600' };
-  return { name: 'NOVATO', color: 'text-gray-400', bg: 'bg-gray-600', border: 'border-gray-600' };
-};
-
-// --- MEDAL CONFIGURATION (3D ASSETS) ---
-type MedalTier = 'bronze' | 'silver' | 'gold';
+type MedalTier = 'bronze' | 'silver' | 'gold' | 'platinum';
 
 interface MedalDef {
   id: string;
@@ -57,52 +46,65 @@ interface MedalDef {
   desc: string;
   emoji: string;
   tier: MedalTier;
-  req: (s: any) => boolean;
+  req: (s: any, plan?: StudyPlan) => boolean;
 }
 
 const MEDALS: MedalDef[] = [
   { id: 'start', name: 'Primeiro Passo', desc: 'Conclua sua primeira aula.', emoji: '🦶', tier: 'bronze', req: (s) => s.completedLessons >= 1 },
-  { id: 'nerd_1', name: 'Dedica', desc: 'Acumule 10 horas de estudo.', emoji: '📚', tier: 'bronze', req: (s) => s.totalTime >= 600 },
-  { id: 'nerd_2', name: 'Maratonista', desc: 'Acumule 50 horas de estudo.', emoji: '🏃', tier: 'silver', req: (s) => s.totalTime >= 3000 },
-  { id: 'sniper_1', name: 'Atirador', desc: 'Acerte 50 questões.', emoji: '🎯', tier: 'bronze', req: (s) => s.correctQ >= 50 },
-  { id: 'sniper_2', name: 'Sniper de Elite', desc: 'Acerte 500 questões.', emoji: '🦅', tier: 'silver', req: (s) => s.correctQ >= 500 },
-  { id: 'master', name: 'Mestre do Conteúdo', desc: 'Complete 100 aulas.', emoji: '👑', tier: 'gold', req: (s) => s.completedLessons >= 100 },
+  { id: 'dedica', name: 'Dedicação', desc: 'Mantenha uma ofensiva de 7 dias.', emoji: '🔥', tier: 'bronze', req: (s, p) => (p?.streak || 0) >= 7 },
+  { id: 'maratonista', name: 'Maratonista', desc: 'Acumule 4 horas de estudo.', emoji: '🏃', tier: 'silver', req: (s) => s.totalTime >= 240 },
+  { id: 'sniper', name: 'Sniper', desc: 'Acerte 100% das questões em uma aula (min 5q).', emoji: '🎯', tier: 'silver', req: (s) => false }, 
+  { id: 'coruja', name: 'Coruja', desc: 'Estude entre 00:00 e 05:00.', emoji: '🦉', tier: 'bronze', req: () => false }, 
+  { id: 'club5', name: 'Clube das 5', desc: 'Estude antes das 06:00.', emoji: '🌅', tier: 'bronze', req: () => false },
+  { id: 'fenix', name: 'Fênix', desc: 'Volte a estudar após 7 dias parado.', emoji: '🦅', tier: 'gold', req: () => false },
+  { id: 'enciclopedia', name: 'Enciclopédia', desc: 'Complete todas as aulas de uma disciplina.', emoji: '📚', tier: 'silver', req: () => false },
+  { id: 'cards', name: 'Mestre dos Cards', desc: 'Crie 50 Flashcards.', emoji: '🃏', tier: 'silver', req: () => false },
+  { id: 'fds', name: 'Guerreiro FDS', desc: 'Estude Sábado e Domingo.', emoji: '⚔️', tier: 'bronze', req: () => false },
+  { id: 'vitalicio', name: 'Vitalício', desc: 'Alcance o Nível 100.', emoji: '👑', tier: 'platinum', req: (s) => s.level >= 100 },
+  { id: 'imortal', name: 'Imortal', desc: 'Alcance 100 dias de ofensiva.', emoji: '🪐', tier: 'platinum', req: (s, p) => (p?.streak || 0) >= 100 },
 ];
 
 const TIER_STYLES = {
   bronze: {
-    ring: 'bg-[conic-gradient(at_top,_var(--tw-gradient-stops))] from-orange-800 via-orange-400 to-orange-900 shadow-[inset_0_2px_4px_rgba(255,255,255,0.3),_0_4px_8px_rgba(0,0,0,0.5)]',
-    core: 'bg-gradient-to-br from-orange-900 to-black',
-    glow: 'shadow-[0_0_20px_rgba(194,65,12,0.4)]',
+    ring: 'bg-[conic-gradient(at_center,_var(--tw-gradient-stops))] from-orange-800 via-orange-400 to-orange-900 shadow-[inset_0_2px_4px_rgba(255,255,255,0.3),_0_4px_8px_rgba(0,0,0,0.5)]',
+    core: 'bg-[radial-gradient(circle_at_center,_var(--tw-gradient-stops))] from-orange-900 to-black',
+    glow: 'shadow-[0_0_15px_rgba(194,65,12,0.4)]',
     text: 'text-orange-400'
   },
   silver: {
-    ring: 'bg-[conic-gradient(at_top,_var(--tw-gradient-stops))] from-slate-600 via-slate-200 to-slate-700 shadow-[inset_0_2px_4px_rgba(255,255,255,0.5),_0_4px_8px_rgba(0,0,0,0.5)]',
-    core: 'bg-gradient-to-br from-slate-800 to-black',
-    glow: 'shadow-[0_0_20px_rgba(148,163,184,0.4)]',
+    ring: 'bg-[conic-gradient(at_center,_var(--tw-gradient-stops))] from-slate-500 via-white to-slate-600 shadow-[inset_0_2px_4px_rgba(255,255,255,0.5),_0_4px_8px_rgba(0,0,0,0.5)]',
+    core: 'bg-[radial-gradient(circle_at_center,_var(--tw-gradient-stops))] from-slate-700 to-black',
+    glow: 'shadow-[0_0_15px_rgba(148,163,184,0.4)]',
     text: 'text-slate-300'
   },
   gold: {
-    ring: 'bg-[conic-gradient(at_top,_var(--tw-gradient-stops))] from-yellow-700 via-yellow-200 to-yellow-800 shadow-[inset_0_2px_4px_rgba(255,255,255,0.6),_0_4px_8px_rgba(0,0,0,0.5)]',
-    core: 'bg-gradient-to-br from-yellow-900 to-black',
-    glow: 'shadow-[0_0_25px_rgba(234,179,8,0.5)]',
+    ring: 'bg-[conic-gradient(at_center,_var(--tw-gradient-stops))] from-yellow-700 via-yellow-200 to-yellow-800 shadow-[inset_0_2px_4px_rgba(255,255,255,0.6),_0_4px_8px_rgba(0,0,0,0.5)]',
+    core: 'bg-[radial-gradient(circle_at_center,_var(--tw-gradient-stops))] from-yellow-800 to-black',
+    glow: 'shadow-[0_0_20px_rgba(234,179,8,0.5)]',
     text: 'text-yellow-400'
+  },
+  platinum: {
+    ring: 'bg-[conic-gradient(at_center,_var(--tw-gradient-stops))] from-cyan-700 via-cyan-200 to-cyan-800 shadow-[inset_0_2px_4px_rgba(255,255,255,0.6),_0_4px_8px_rgba(0,0,0,0.5)]',
+    core: 'bg-[radial-gradient(circle_at_center,_var(--tw-gradient-stops))] from-cyan-900 to-black',
+    glow: 'shadow-[0_0_25px_rgba(6,182,212,0.6)]',
+    text: 'text-cyan-400'
   }
 };
 
 export const AchievementsTab: React.FC<AchievementsTabProps> = ({ user, plan, subjects }) => {
   const stats = calculateStats(subjects, plan.bonusXP || 0);
-  const rank = getRank(stats.level);
+  const rank = getRankInfo(stats.xp, plan.careerId);
   const [selectedMedal, setSelectedMedal] = useState<MedalDef & { isUnlocked: boolean } | null>(null);
 
   const iceCount = plan.inventory?.ice || 0;
+  const forcedMedals = plan.forcedMedals || [];
 
   return (
     <div className="animate-in fade-in slide-in-from-bottom-4 duration-500 pb-20">
       
       {/* --- IDENTITY CARD --- */}
       <div className={`relative overflow-hidden rounded-2xl border ${rank.border} bg-[#1e1e1e] p-6 mb-6 shadow-2xl`}>
-        <div className={`absolute top-0 right-0 p-2 ${rank.bg} text-black text-xs font-bold px-3 rounded-bl-xl`}>
+        <div className={`absolute top-0 right-0 p-2 ${rank.bg} text-black text-xs font-bold px-3 rounded-bl-xl uppercase tracking-wider`}>
           {rank.name}
         </div>
         
@@ -166,7 +168,8 @@ export const AchievementsTab: React.FC<AchievementsTabProps> = ({ user, plan, su
         </h3>
         <div className="grid grid-cols-3 sm:grid-cols-4 gap-y-8 gap-x-4">
           {MEDALS.map((medal) => {
-            const isUnlocked = medal.req(stats);
+            // Check Stats OR Forced Unlock
+            const isUnlocked = forcedMedals.includes(medal.id) || medal.req(stats, plan);
             const style = TIER_STYLES[medal.tier];
 
             return (
@@ -175,30 +178,28 @@ export const AchievementsTab: React.FC<AchievementsTabProps> = ({ user, plan, su
                 onClick={() => setSelectedMedal({ ...medal, isUnlocked })}
                 className="flex flex-col items-center group relative focus:outline-none"
               >
-                {/* 3D Medal Container */}
-                <div className={`relative w-20 h-20 rounded-full transition-all duration-500 ${isUnlocked ? `${style.glow} scale-100 hover:scale-105` : 'grayscale opacity-60 scale-95'}`}>
+                {/* 3D Medal Container - COIN STYLE - STRICTLY CIRCULAR */}
+                <div className={`relative w-20 h-20 rounded-full min-w-[5rem] min-h-[5rem] transition-all duration-500 ${isUnlocked ? `${style.glow} scale-100 hover:scale-105` : 'grayscale opacity-60 scale-95'}`}>
                    
-                   {/* Metal Ring (Outer) */}
+                   {/* Metal Ring (Conic Gradient) */}
                    <div className={`absolute inset-0 rounded-full ${style.ring}`}></div>
                    
-                   {/* Enamel Core (Inner) */}
-                   <div className={`absolute inset-2 rounded-full ${style.core} shadow-inner flex items-center justify-center`}>
+                   {/* Core (Radial Gradient) */}
+                   <div className={`absolute inset-[6px] rounded-full ${style.core} shadow-[inset_0_2px_4px_rgba(0,0,0,0.6)] flex items-center justify-center overflow-hidden`}>
                         {/* High Relief Emoji */}
-                        <span className="text-3xl filter drop-shadow-[0_2px_2px_rgba(0,0,0,0.8)] select-none">
+                        <span className="text-4xl filter drop-shadow-[0_2px_1px_rgba(0,0,0,0.5)] select-none transform group-hover:scale-110 transition-transform duration-300">
                             {medal.emoji}
                         </span>
+                        
+                        {/* Shine Reflection */}
+                        <div className="absolute -inset-full top-0 block w-1/2 h-full -skew-x-12 bg-gradient-to-r from-transparent to-white opacity-20 group-hover:animate-shine" />
                    </div>
 
                    {/* Locked Overlay */}
                    {!isUnlocked && (
-                       <div className="absolute inset-0 bg-black/40 rounded-full flex items-center justify-center backdrop-blur-[1px]">
-                           <Lock size={24} className="text-gray-400 drop-shadow-md" />
+                       <div className="absolute inset-0 bg-black/50 rounded-full flex items-center justify-center backdrop-blur-[1px]">
+                           <Lock size={20} className="text-gray-400 drop-shadow-md" />
                        </div>
-                   )}
-
-                   {/* Shine Effect (Pure CSS) */}
-                   {isUnlocked && (
-                       <div className="absolute inset-0 rounded-full bg-gradient-to-tr from-white/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none"></div>
                    )}
                 </div>
 
@@ -216,20 +217,20 @@ export const AchievementsTab: React.FC<AchievementsTabProps> = ({ user, plan, su
       {selectedMedal && (
         <div className="fixed inset-0 bg-black/90 z-[100] flex items-center justify-center p-4 backdrop-blur-sm" onClick={() => setSelectedMedal(null)}>
           <div className="bg-[#1e1e1e] border border-gray-700 rounded-2xl p-8 max-w-sm w-full text-center relative animate-in fade-in zoom-in-95 shadow-2xl" onClick={e => e.stopPropagation()}>
-             <button onClick={() => setSelectedMedal(null)} className="absolute top-3 right-3 p-2 text-gray-500 hover:text-white bg-gray-800/50 rounded-full transition-colors"><X size={20}/></button>
+             <button onClick={() => setSelectedMedal(null)} className="absolute top-3 right-3 bg-gray-800 text-gray-400 hover:text-white p-1 rounded-full"><X size={16}/></button>
              
              {/* Big Version of Medal */}
-             <div className="flex justify-center mb-6">
-                <div className={`relative w-32 h-32 rounded-full ${selectedMedal.isUnlocked ? TIER_STYLES[selectedMedal.tier].glow : 'grayscale opacity-80'}`}>
+             <div className="flex justify-center mb-6 scale-125">
+                <div className={`relative w-24 h-24 rounded-full min-w-[6rem] min-h-[6rem] ${selectedMedal.isUnlocked ? TIER_STYLES[selectedMedal.tier].glow : 'grayscale opacity-80'}`}>
                     <div className={`absolute inset-0 rounded-full ${TIER_STYLES[selectedMedal.tier].ring}`}></div>
-                    <div className={`absolute inset-3 rounded-full ${TIER_STYLES[selectedMedal.tier].core} shadow-inner flex items-center justify-center`}>
-                        <span className="text-6xl filter drop-shadow-[0_4px_4px_rgba(0,0,0,0.8)]">
+                    <div className={`absolute inset-[6px] rounded-full ${TIER_STYLES[selectedMedal.tier].core} shadow-[inset_0_2px_4px_rgba(0,0,0,0.6)] flex items-center justify-center`}>
+                        <span className="text-5xl filter drop-shadow-[0_4px_4px_rgba(0,0,0,0.8)]">
                             {selectedMedal.emoji}
                         </span>
                     </div>
                     {!selectedMedal.isUnlocked && (
                        <div className="absolute inset-0 bg-black/40 rounded-full flex items-center justify-center">
-                           <Lock size={40} className="text-gray-300" />
+                           <Lock size={30} className="text-gray-300" />
                        </div>
                    )}
                 </div>

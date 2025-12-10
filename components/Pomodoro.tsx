@@ -1,5 +1,6 @@
+
 import React, { useState, useEffect, useRef } from 'react';
-import { Play, Pause, RotateCcw, Coffee, Brain, Battery, Settings, Save, StopCircle, Clock } from 'lucide-react';
+import { Play, Pause, RotateCcw, Coffee, Brain, Battery, Settings, Save, Square, Clock, X } from 'lucide-react';
 import { TimerSettings, ActiveSession } from '../types';
 
 interface PomodoroProps {
@@ -151,10 +152,10 @@ export const Pomodoro: React.FC<PomodoroProps> = ({
   if (isEditing) {
     return (
       <div className="fixed bottom-0 left-0 right-0 bg-[#181818] border-t border-gray-800 p-4 shadow-2xl z-50">
-        <div className="max-w-3xl mx-auto">
+        <div className="max-w-3xl mx-auto animate-in slide-in-from-bottom-4">
           <div className="flex justify-between items-center mb-4">
             <h3 className="text-white font-bold">Configurar Timer (minutos)</h3>
-            <button onClick={() => setIsEditing(false)} className="text-gray-500 hover:text-white">X</button>
+            <button onClick={() => setIsEditing(false)} className="bg-gray-800 text-gray-400 hover:text-white p-1 rounded-full transition-colors"><X size={16} /></button>
           </div>
           <div className="grid grid-cols-3 gap-4 mb-4">
             <div>
@@ -196,35 +197,40 @@ export const Pomodoro: React.FC<PomodoroProps> = ({
   // --- RENDER: STOPWATCH MODE (ACTIVE SESSION) ---
   if (activeSession) {
       return (
-        <div className="fixed bottom-0 left-0 right-0 bg-[#181818] border-t-2 border-green-500 p-4 shadow-2xl z-50 safe-area-bottom">
-            <div className="max-w-3xl mx-auto flex items-center justify-between">
-                <div className="flex flex-col min-w-0 pr-4">
-                    <span className="text-[10px] text-green-500 font-bold uppercase tracking-wider flex items-center gap-1 animate-pulse">
-                        <span className="w-2 h-2 rounded-full bg-green-500 inline-block"></span>
-                        Estudando
+        <div className="fixed bottom-0 left-0 right-0 bg-[#181818]/95 backdrop-blur-md border-t-2 border-green-500 p-4 shadow-[0_-5px_30px_rgba(0,0,0,0.5)] z-50 safe-area-bottom">
+            <div className="max-w-md mx-auto flex items-center justify-between gap-4">
+                
+                {/* 1. LEFT: STOP BUTTON (Soft Red Square) */}
+                <button 
+                    onClick={onStopSession} 
+                    className="w-14 h-14 bg-red-900/30 hover:bg-red-900/50 rounded-xl text-red-500 transition-all shadow-lg active:scale-95 flex items-center justify-center border border-red-500/20"
+                    title="Finalizar Sessão"
+                >
+                    <Square size={20} fill="currentColor" />
+                </button>
+
+                {/* 2. CENTER: TIMER & STATUS */}
+                <div className="flex flex-col items-center justify-center flex-1">
+                    <span className={`text-[10px] font-bold uppercase tracking-widest mb-0.5 ${activeSession.isPaused ? 'text-yellow-500' : 'text-green-500 animate-pulse'}`}>
+                        {activeSession.isPaused ? 'PAUSADO' : 'ESTUDANDO'}
                     </span>
-                    <span className="text-white font-bold truncate">{activeSession.title}</span>
+                    <div className="font-mono text-4xl text-gray-100 font-medium tracking-wider leading-none">
+                        {formatElapsedTime(elapsedTime)}
+                    </div>
                 </div>
 
-                <div className="font-mono text-3xl font-bold text-white tracking-widest">
-                    {formatElapsedTime(elapsedTime)}
-                </div>
-
-                <div className="flex items-center gap-2">
-                    <button 
-                        onClick={onPauseSession} 
-                        className={`p-3 rounded-full transition-all ${activeSession.isPaused ? 'bg-yellow-600 hover:bg-yellow-500' : 'bg-gray-700 hover:bg-gray-600'} text-white shadow-lg`}
-                    >
-                         {activeSession.isPaused ? <Play size={20} fill="currentColor" className="ml-1"/> : <Pause size={20} fill="currentColor" />}
-                    </button>
-                    <button 
-                        onClick={onStopSession} 
-                        className="p-3 bg-red-600 hover:bg-red-500 rounded-full text-white transition-colors shadow-lg"
-                        title="Finalizar e Salvar"
-                    >
-                        <StopCircle size={20} fill="currentColor" />
-                    </button>
-                </div>
+                {/* 3. RIGHT: PLAY/PAUSE BUTTON (Round) */}
+                {/* Logic: If Paused, Show Play (Green). If Running, Show Pause (Yellow). */}
+                <button 
+                    onClick={onPauseSession} 
+                    className={`w-14 h-14 rounded-full transition-all shadow-lg active:scale-95 flex items-center justify-center ${
+                        activeSession.isPaused 
+                        ? 'bg-green-500 hover:bg-green-400 text-black shadow-[0_0_15px_rgba(34,197,94,0.4)]' 
+                        : 'bg-yellow-500 hover:bg-yellow-400 text-black shadow-[0_0_15px_rgba(234,179,8,0.4)]'
+                    }`}
+                >
+                     {activeSession.isPaused ? <Play size={24} fill="currentColor" className="ml-1"/> : <Pause size={24} fill="currentColor" />}
+                </button>
             </div>
         </div>
       );
